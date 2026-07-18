@@ -63,6 +63,22 @@ export function skillUpgradeCost(gradeIndex: number, level: number): number {
   );
 }
 
+/**
+ * 스킬 판매가 = 기본가 + 강화 투자금 환급.
+ * 기본가는 등급마다 2배(등장 확률 1/2과 대칭), 변형 옵션당 +25%.
+ * 환급은 Lv.1→현재 레벨까지 강화 비용 합의 50% — 실제 지불액(floor된 값)을 그대로 합산해
+ * 저장/복원 후에도 결정론적으로 같은 값이 나온다.
+ */
+export function skillSellPrice(gradeIndex: number, level: number, modCount: number): number {
+  const base =
+    BALANCE.SKILL_SELL_BASE *
+    ipow(BALANCE.SKILL_SELL_GRADE_MULT, gradeIndex) *
+    (1 + BALANCE.SKILL_SELL_MOD_BONUS * modCount);
+  let invested = 0;
+  for (let lv = 1; lv < level; lv++) invested += skillUpgradeCost(gradeIndex, lv);
+  return Math.floor(base + BALANCE.SKILL_SELL_UPGRADE_REFUND * invested);
+}
+
 // ── 스테이지 ──
 
 export function killsToClear(stageIndex: number): number {

@@ -1,21 +1,34 @@
 /**
- * 스킬 패널 — 추첨(조합 생성), 장착 슬롯, 강화, 스킬 트리.
+ * 스킬 패널 — 추첨(조합 생성), 장착 슬롯, 강화/판매, 스킬 트리.
+ * 장착/해제/교체는 드래그 앤 드랍: 아이콘을 슬롯에 끌어 장착, 슬롯끼리 교체,
+ * 슬롯에서 보유 목록으로 끌면 해제. Pointer Events 기반이라 마우스/터치 공용.
  */
 import { BALANCE } from '../config/balance';
 import { TREE_NODES } from '../content/skill-tree';
 import { SKILL_GRADES } from '../content/skills/skill-grades';
-import { skillRollCost, skillUpgradeCost } from '../sim/progression/growth';
-import { rollProbabilities } from '../sim/skills/skill-catalog';
+import { skillRollCost, skillSellPrice, skillUpgradeCost } from '../sim/progression/growth';
+import { decodeSkillId, rollProbabilities } from '../sim/skills/skill-catalog';
 import { composeSkill } from '../sim/skills/skill-composer';
 import type { Simulation } from '../sim/simulation';
 import { button, el, fmt } from './dom';
+import { skillIconURL } from './skill-icon';
+
+/** 드래그 출처 — 보유 목록에서 시작했는지, 슬롯에서 시작했는지 */
+interface DragSource {
+  skillId: string;
+  fromSlot: number | null;
+}
+
+const DRAG_THRESHOLD_PX = 5;
 
 export class SkillsPanel {
   readonly root = el('div', 'panel-body');
+  private ghost: HTMLImageElement | null = null;
+  private hoverTarget: HTMLElement | null = null;
 
   constructor(private readonly sim: Simulation) {
     this.refresh();
-    for (const t of ['skillRolled', 'skillUpgraded', 'skillEquipped', 'treeNodeUnlocked', 'catchupSummary']) {
+    for (const t of ['skillRolled', 'skillUpgraded', 'skillSold', 'skillEquipped', 'treeNodeUnlocked', 'catchupSummary']) {
       sim.bus.on(t, () => this.refresh());
     }
   }
@@ -37,47 +50,25 @@ export class SkillsPanel {
     rollWrap.append(rollRow, this.buildRollTooltip());
     this.root.append(rollWrap);
 
-    // ── 장착 슬롯 ──
-    const slotsTitle = el('div', 'section-title', `장착 슬롯 (${BALANCE.SKILL_SLOTS})`);
-    this.root.append(slotsTitle);
+    // ── 장착 슬롯 (드랍 대상) ──
+    this.root.append(el('div', 'section-title', `장착 슬롯 (${BALANCE.SKILL_SLOTS})`));
+    const slotGrid = el('div', 'slot-grid');
     s.skills.equipped.forEach((id, slot) => {
-      const row = el('div', 'card slot');
-      if (id) {
-        const owned = s.skills.owned.find((o) => o.id === id);
-        const inst = owned ? composeSkill(owned.id, owned.level) : null;
-        row.append(el('div', 'card-title', inst ? `${inst.name} Lv.${inst.level}` : id));
-        row.append(button('해제', () => void this.sim.execute({ type: 'unequipSkill', slot }), 'btn secondary'));
-      } else {
-        row.append(el('div', 'card-sub', `슬롯 ${slot + 1} — 비어 있음`));
-      }
-      this.root.append(row);
+      slotGrid.append(this.buildSlotTile(id, slot));
     });
+    this.root.append(slotGrid);
+    this.root.append(
+      el('div', 'dnd-hint', '아이콘을 끌어 장착 · 슬롯끼리 교체 · 슬롯에서 목록으로 끌면 해제'),
+    );
 
-    // ── 보유 스킬 ──
+    // ── 보유 스킬 (슬롯에서 끌어오면 해제되는 드랍 존) ──
     this.root.append(el('div', 'section-title', `보유 스킬 (${s.skills.owned.length})`));
+    const ownedZone = el('div', 'owned-zone');
+    ownedZone.dataset['drop'] = 'owned';
     for (const owned of s.skills.owned) {
-      const inst = composeSkill(owned.id, owned.level);
-      const grade = SKILL_GRADES[inst.gradeId]!;
-      const card = el('div', 'card');
-      const title = el('div', 'card-title', `${inst.name} Lv.${inst.level}`);
-      title.style.color = grade.color;
-      card.append(title);
-      card.append(el('div', 'card-sub', `데미지 ${fmt(inst.damage)} · ${inst.behavior}`));
-      const row = el('div', 'card-actions');
-      const upCost = skillUpgradeCost(inst.gradeIndex, owned.level);
-      row.append(
-        button(`강화 (${fmt(upCost)}G)`, () => void this.sim.execute({ type: 'upgradeSkill', skillId: owned.id })),
-      );
-      if (!s.skills.equipped.includes(owned.id)) {
-        const empty = s.skills.equipped.indexOf(null);
-        const target = empty >= 0 ? empty : 0;
-        row.append(
-          button('장착', () => void this.sim.execute({ type: 'equipSkill', skillId: owned.id, slot: target }), 'btn secondary'),
-        );
-      }
-      card.append(row);
-      this.root.append(card);
+      ownedZone.append(this.buildOwnedCard(owned.id, owned.level));
     }
+    this.root.append(ownedZone);
 
     // ── 스킬 트리 ──
     this.root.append(el('div', 'section-title', '스킬 트리'));
@@ -97,6 +88,176 @@ export class SkillsPanel {
       }
       this.root.append(card);
     }
+  }
+
+  // ── 슬롯 타일 ──
+
+  private buildSlotTile(id: string | null, slot: number): HTMLElement {
+    const tile = el('div', id ? 'skill-slot' : 'skill-slot empty');
+    tile.dataset['drop'] = 'slot';
+    tile.dataset['slot'] = String(slot);
+    if (id) {
+      const owned = this.sim.state.skills.owned.find((o) => o.id === id);
+      const inst = owned ? composeSkill(owned.id, owned.level) : null;
+      if (inst) {
+        const grade = SKILL_GRADES[inst.gradeId]!;
+        tile.style.borderColor = grade.color;
+        tile.title = `${inst.name} Lv.${inst.level}`;
+        const icon = this.buildIcon(id, { skillId: id, fromSlot: slot });
+        tile.append(icon, el('span', 'slot-level', `Lv.${inst.level}`));
+      }
+    } else {
+      tile.append(el('span', 'slot-plus', '+'));
+      tile.title = `슬롯 ${slot + 1} — 비어 있음`;
+    }
+    return tile;
+  }
+
+  // ── 보유 스킬 카드 ──
+
+  private buildOwnedCard(id: string, level: number): HTMLElement {
+    const s = this.sim.state;
+    const inst = composeSkill(id, level);
+    const grade = SKILL_GRADES[inst.gradeId]!;
+    const equipped = s.skills.equipped.includes(id);
+    const card = el('div', equipped ? 'card skill-card equipped' : 'card skill-card');
+
+    const iconWrap = el('div', 'skill-icon-wrap');
+    iconWrap.append(this.buildIcon(id, { skillId: id, fromSlot: null }));
+    if (equipped) iconWrap.append(el('span', 'equipped-badge', '장착중'));
+    card.append(iconWrap);
+
+    const body = el('div', 'skill-card-body');
+    const title = el('div', 'card-title', `${inst.name} Lv.${inst.level}`);
+    title.style.color = grade.color;
+    body.append(title);
+    body.append(el('div', 'card-sub', `데미지 ${fmt(inst.damage)} · ${inst.behavior}`));
+    const row = el('div', 'card-actions');
+    const upCost = skillUpgradeCost(inst.gradeIndex, level);
+    row.append(
+      button(`강화 (${fmt(upCost)}G)`, () => void this.sim.execute({ type: 'upgradeSkill', skillId: id })),
+    );
+    const sellPrice = skillSellPrice(inst.gradeIndex, level, decodeSkillId(id).modIds.length);
+    row.append(
+      button(`판매 (+${fmt(sellPrice)}G)`, () => {
+        if (window.confirm(`${inst.name} Lv.${inst.level}을(를) ${fmt(sellPrice)}G에 판매할까요? 되돌릴 수 없습니다.`)) {
+          void this.sim.execute({ type: 'sellSkill', skillId: id });
+        }
+      }, 'btn danger'),
+    );
+    body.append(row);
+    card.append(body);
+    return card;
+  }
+
+  // ── 아이콘 (드래그 핸들) ──
+
+  private buildIcon(skillId: string, source: DragSource): HTMLImageElement {
+    const img = el('img', 'skill-icon drag-handle') as HTMLImageElement;
+    img.src = skillIconURL(skillId);
+    img.draggable = false; // 브라우저 기본 이미지 드래그 무효화 (Pointer Events로 직접 처리)
+    img.addEventListener('pointerdown', (e) => this.startDrag(e, img, source));
+    return img;
+  }
+
+  // ── 드래그 앤 드랍 (Pointer Events — 마우스/터치 공용) ──
+
+  private startDrag(e: PointerEvent, handle: HTMLImageElement, source: DragSource): void {
+    if (!e.isPrimary) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let dragging = false;
+    handle.setPointerCapture(e.pointerId);
+
+    const equippedNow = source.fromSlot !== null || this.sim.state.skills.equipped.includes(source.skillId);
+
+    const onMove = (ev: PointerEvent) => {
+      if (!dragging) {
+        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_THRESHOLD_PX) return;
+        dragging = true;
+        this.beginGhost(handle, equippedNow);
+      }
+      this.moveGhost(ev.clientX, ev.clientY);
+    };
+    const finish = (ev: PointerEvent, commit: boolean) => {
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onUp);
+      handle.removeEventListener('pointercancel', onCancel);
+      if (dragging) {
+        const target = commit ? this.dropTargetAt(ev.clientX, ev.clientY) : null;
+        this.endGhost();
+        if (target) this.resolveDrop(source, target);
+      }
+    };
+    const onUp = (ev: PointerEvent) => finish(ev, true);
+    const onCancel = (ev: PointerEvent) => finish(ev, false);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onCancel);
+  }
+
+  private beginGhost(handle: HTMLImageElement, sourceEquipped: boolean): void {
+    const ghost = handle.cloneNode() as HTMLImageElement;
+    ghost.className = 'drag-ghost';
+    document.body.append(ghost);
+    this.ghost = ghost;
+    this.root.classList.add('dragging');
+    // 해제 드랍 존은 장착 중인 스킬을 끌 때만 의미가 있다
+    if (sourceEquipped) this.root.classList.add('can-unequip');
+  }
+
+  private moveGhost(x: number, y: number): void {
+    if (!this.ghost) return;
+    this.ghost.style.left = `${x}px`;
+    this.ghost.style.top = `${y}px`;
+    const target = this.dropTargetAt(x, y);
+    if (target !== this.hoverTarget) {
+      this.hoverTarget?.classList.remove('drop-hover');
+      target?.classList.add('drop-hover');
+      this.hoverTarget = target;
+    }
+  }
+
+  private endGhost(): void {
+    this.ghost?.remove();
+    this.ghost = null;
+    this.hoverTarget?.classList.remove('drop-hover');
+    this.hoverTarget = null;
+    this.root.classList.remove('dragging', 'can-unequip');
+  }
+
+  /** 포인터 아래의 드랍 대상 — 고스트는 pointer-events:none이라 걸리지 않는다 */
+  private dropTargetAt(x: number, y: number): HTMLElement | null {
+    const hit = document.elementFromPoint(x, y);
+    return (hit?.closest('[data-drop]') as HTMLElement | null) ?? null;
+  }
+
+  private resolveDrop(source: DragSource, target: HTMLElement): void {
+    if (target.dataset['drop'] === 'slot') {
+      this.dropOnSlot(source.skillId, Number(target.dataset['slot']));
+    } else if (target.dataset['drop'] === 'owned') {
+      this.dropOnOwned(source.skillId);
+    }
+  }
+
+  /** 슬롯에 드랍: 장착. 이미 다른 슬롯에 있던 스킬이면 자리를 맞바꾼다 */
+  private dropOnSlot(skillId: string, slot: number): void {
+    if (!Number.isInteger(slot)) return;
+    const eq = this.sim.state.skills.equipped;
+    const cur = eq.indexOf(skillId);
+    if (cur === slot) return;
+    const displaced = eq[slot] ?? null;
+    void this.sim.execute({ type: 'equipSkill', skillId, slot });
+    if (cur >= 0 && displaced && displaced !== skillId) {
+      void this.sim.execute({ type: 'equipSkill', skillId: displaced, slot: cur });
+    }
+  }
+
+  /** 보유 목록에 드랍: 장착 중이면 해제 */
+  private dropOnOwned(skillId: string): void {
+    const cur = this.sim.state.skills.equipped.indexOf(skillId);
+    if (cur >= 0) void this.sim.execute({ type: 'unequipSkill', slot: cur });
   }
 
   /** 실제 추첨 로직(skill-catalog)과 같은 수치에서 파생된 확률 표 */

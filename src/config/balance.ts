@@ -46,6 +46,10 @@ export const BALANCE = {
   SKILL_ROLL_COST_GROWTH: 1.2,
   SKILL_UPGRADE_COST_BASE: 40,
   SKILL_UPGRADE_COST_GROWTH: 1.25,
+  SKILL_SELL_BASE: 30, // 최저 등급 Lv.1 기본 판매가 — 추첨 기본가(60G)의 절반이라 되팔이 이득 불가
+  SKILL_SELL_GRADE_MULT: 2, // 등급당 판매가 ×2 — 등장 확률이 등급마다 1/2인 것과 대칭
+  SKILL_SELL_MOD_BONUS: 0.25, // 변형 옵션 1개당 기본 판매가 +25%
+  SKILL_SELL_UPGRADE_REFUND: 0.5, // 강화에 투자한 골드의 50% 환급
   GRADE_UNLOCK_STAGE_STEP: 4, // i등급은 최고 스테이지 i*step 도달부터 등장
   SKILL_MOD_COUNT_WEIGHTS: [0.4, 0.4, 0.2] as const, // 변형 0/1/2개 확률
   ORBIT_PHASE_OFFSET_RAD: 0.9, // 회전 스킬 다중 장착 시 슬롯별 위상차 (겹침 방지)

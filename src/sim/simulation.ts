@@ -16,10 +16,10 @@ import { tickStatuses } from './combat/status-effects';
 import { nearestEnemy } from './combat/targeting';
 import { checkStageClear } from './progression/growth';
 import { weaponDamage } from './progression/growth';
-import { skillRollCost, skillUpgradeCost } from './progression/growth';
+import { skillRollCost, skillSellPrice, skillUpgradeCost } from './progression/growth';
 import { treeBonuses, unlockTreeNode } from './progression/skill-tree';
 import { equipWeapon, equippedWeapon, upgradeWeapon } from './progression/weapon-upgrade';
-import { encodeSkillId, rollSkillCombo } from './skills/skill-catalog';
+import { decodeSkillId, encodeSkillId, rollSkillCombo } from './skills/skill-catalog';
 import { composeSkill, type SkillInstance } from './skills/skill-composer';
 import { spawnProjectile, tickSkills } from './skills/skill-resolver';
 import type { SimState } from './state';
@@ -29,6 +29,7 @@ export type SimCommand =
   | { type: 'equipWeapon'; weaponId: string }
   | { type: 'rollSkill' }
   | { type: 'upgradeSkill'; skillId: string }
+  | { type: 'sellSkill'; skillId: string }
   | { type: 'equipSkill'; skillId: string; slot: number }
   | { type: 'unequipSkill'; slot: number }
   | { type: 'unlockTreeNode'; nodeId: string };
@@ -142,6 +143,8 @@ export class Simulation {
         return this.rollSkill();
       case 'upgradeSkill':
         return this.upgradeSkill(cmd.skillId);
+      case 'sellSkill':
+        return this.sellSkill(cmd.skillId);
       case 'equipSkill':
         return this.equipSkill(cmd.skillId, cmd.slot);
       case 'unequipSkill':
@@ -183,6 +186,24 @@ export class Simulation {
     owned.level++;
     this.invalidateSkills();
     this.bus.emit('state', { type: 'skillUpgraded', skillId, level: owned.level });
+    return true;
+  }
+
+  /** 스킬 판매 — 보유 목록에서 제거하고 판매가만큼 골드 환급. 장착 중이면 자동 해제 */
+  private sellSkill(skillId: string): boolean {
+    const s = this.state;
+    const idx = s.skills.owned.findIndex((sk) => sk.id === skillId);
+    if (idx < 0) return false;
+    const owned = s.skills.owned[idx]!;
+    const inst = composeSkill(owned.id, owned.level);
+    const price = skillSellPrice(inst.gradeIndex, owned.level, decodeSkillId(owned.id).modIds.length);
+    s.skills.owned.splice(idx, 1);
+    for (let i = 0; i < s.skills.equipped.length; i++) {
+      if (s.skills.equipped[i] === skillId) s.skills.equipped[i] = null;
+    }
+    s.player.gold += price;
+    this.invalidateSkills();
+    this.bus.emit('state', { type: 'skillSold', skillId, gold: price });
     return true;
   }
 
