@@ -4,16 +4,23 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overscroll-behavior: none; /* 모바일 당겨서 새로고침 방지 */
+}
+
 body {
   background: #0c0e14;
   color: #d8dce8;
   font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #app {
   display: flex;
   height: 100vh;
+  height: 100dvh; /* 모바일 주소창 접힘/펼침에도 실제 보이는 높이 */
 }
 
 #battle {
@@ -22,6 +29,7 @@ body {
   align-items: center;
   justify-content: center;
   min-width: 0;
+  min-height: 0;
 }
 
 #panel {
@@ -32,6 +40,60 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* ── 모바일 세로: 위아래 쌓기 (전투 위 / 패널 아래) ── */
+@media (max-width: 820px) and (orientation: portrait) {
+  #app {
+    flex-direction: column;
+  }
+
+  #battle {
+    flex: 0 0 44dvh;
+  }
+
+  #panel {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    border-left: none;
+    border-top: 1px solid #2a2e3e;
+    padding-bottom: env(safe-area-inset-bottom); /* 홈 인디케이터 영역 회피 */
+  }
+}
+
+/* ── 모바일 가로(납작한 화면): 좌우 배치 유지하되 패널 축소 ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  #panel {
+    width: 280px;
+  }
+
+  #hud {
+    padding: 8px 12px;
+  }
+
+  .hud-row {
+    font-size: 13px;
+    margin-bottom: 2px;
+  }
+}
+
+/* ── 터치 기기: 탭 타겟 확대 ── */
+@media (pointer: coarse) {
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    min-height: 42px;
+  }
+
+  #tabs button {
+    padding: 14px 4px;
+    font-size: 14px;
+  }
+
+  .card {
+    padding: 12px;
+  }
 }
 
 /* ── HUD ── */
@@ -165,6 +227,8 @@ body {
   padding: 6px 12px;
   font-size: 13px;
   cursor: pointer;
+  touch-action: manipulation; /* 더블탭 확대 방지 */
+  user-select: none;
 }
 
 .btn:hover {
@@ -205,8 +269,34 @@ body {
   font-size: 12px;
 }
 
-.tooltip-wrap:hover .tooltip {
+/* 데스크톱(실제 호버 지원 기기)만 호버로 열기 — 터치의 sticky hover 방지 */
+@media (hover: hover) and (pointer: fine) {
+  .tooltip-wrap:hover .tooltip {
+    display: block;
+  }
+}
+
+/* 터치: ⓘ 버튼 토글 */
+.tooltip-wrap.open .tooltip {
   display: block;
+}
+
+.roll-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.roll-row .btn.wide {
+  flex: 1;
+}
+
+.btn.info {
+  background: #2a2e3e;
+  flex: 0 0 auto;
+  width: 42px;
+  margin: 4px 0;
+  font-size: 15px;
 }
 
 .tooltip-title {
@@ -271,7 +361,7 @@ body {
   border: 1px solid #2a2e3e;
   border-radius: 12px;
   padding: 20px;
-  width: 320px;
+  width: min(90vw, 340px);
 }
 
 .modal-title {

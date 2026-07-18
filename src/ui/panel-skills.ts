@@ -24,15 +24,17 @@ export class SkillsPanel {
     const s = this.sim.state;
     this.root.replaceChildren();
 
-    // ── 추첨 (호버 시 확률 툴팁) ──
+    // ── 추첨 (확률 툴팁: 데스크톱은 호버, 터치는 ⓘ 토글) ──
     const rollCost = skillRollCost(s.skills.rollCount);
     const rollWrap = el('div', 'tooltip-wrap');
-    rollWrap.append(
+    const rollRow = el('div', 'roll-row');
+    rollRow.append(
       button(`🎲 스킬 추첨 (${fmt(rollCost)}G)`, () => {
         this.sim.execute({ type: 'rollSkill' });
       }, 'btn wide'),
-      this.buildRollTooltip(),
+      button('ⓘ', () => rollWrap.classList.toggle('open'), 'btn info'),
     );
+    rollWrap.append(rollRow, this.buildRollTooltip());
     this.root.append(rollWrap);
 
     // ── 장착 슬롯 ──
