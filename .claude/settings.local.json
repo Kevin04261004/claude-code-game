@@ -1,7 +1,31 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(git fetch *)",
+      "Bash(gh api *)",
+      "Bash(gh repo *)",
+      "Bash(gh auth *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://kevin04261004.github.io/claude-code-game/idle-kingdom.html)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://kevin04261004.github.io/claude-code-game/)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git remote *)",
+      "Bash(python3 -m http.server 8931)",
+      "Bash(curl -s -o /dev/null -w \"index.html: %{http_code}\\\\n\" http://localhost:8931/idle-kingdom.html)",
+      "Bash(curl -s -o /dev/null -w \"style.css: %{http_code}\\\\n\" http://localhost:8931/style.css)",
+      "Bash(curl -s -o /dev/null -w \"game.js: %{http_code}\\\\n\" http://localhost:8931/game.js)",
+      "Bash(kill %1)",
+      "Bash(curl -s https://kevin04261004.github.io/claude-code-game/game.js)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npm run *)",
+      "Bash(compgen -c)",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(npx playwright *)",
+      "Bash(sudo npx playwright install-deps chromium)"
     ]
   }
 }

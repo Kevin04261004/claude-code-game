@@ -1,0 +1,257 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #0c0e14;
+  color: #d8dce8;
+  font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+#battle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+#panel {
+  width: 320px;
+  flex-shrink: 0;
+  background: #161926;
+  border-left: 1px solid #2a2e3e;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── HUD ── */
+#hud {
+  padding: 12px;
+  border-bottom: 1px solid #2a2e3e;
+}
+
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.hud-label {
+  color: #8a90a8;
+}
+
+.hud-value {
+  font-weight: 600;
+}
+
+.bar-track {
+  height: 6px;
+  background: #0c0e14;
+  border-radius: 3px;
+  margin: 2px 0 8px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  width: 0;
+  transition: width 0.2s;
+}
+
+.bar-fill.exp {
+  background: #5aa6e8;
+}
+
+.bar-fill.stage {
+  background: #f2a640;
+}
+
+/* ── 탭 ── */
+#tabs {
+  display: flex;
+  border-bottom: 1px solid #2a2e3e;
+}
+
+#tabs button {
+  flex: 1;
+  padding: 10px 4px;
+  background: none;
+  border: none;
+  color: #8a90a8;
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 2px solid transparent;
+}
+
+#tabs button.active {
+  color: #ffffff;
+  border-bottom-color: #5aa6e8;
+}
+
+#tab-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.panel-body {
+  padding: 10px;
+}
+
+.section-title {
+  font-size: 12px;
+  color: #8a90a8;
+  margin: 12px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── 카드 ── */
+.card {
+  background: #1c2030;
+  border: 1px solid #2a2e3e;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.card.equipped {
+  border-color: #5aa6e8;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.card-sub {
+  font-size: 12px;
+  color: #8a90a8;
+}
+
+.card-sub.locked {
+  color: #6a6e80;
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.card.slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── 버튼 ── */
+.btn {
+  background: #2a5a8a;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #366ba2;
+}
+
+.btn.secondary {
+  background: #2a2e3e;
+}
+
+.btn.secondary:hover {
+  background: #383e52;
+}
+
+.btn.wide {
+  width: 100%;
+  padding: 10px;
+  margin: 4px 0;
+}
+
+/* ── 리더보드 ── */
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.lb-rank {
+  width: 22px;
+  color: #8a90a8;
+  font-weight: 700;
+}
+
+.lb-name {
+  flex: 1;
+}
+
+.lb-score {
+  font-weight: 600;
+}
+
+/* ── 모달 ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: #1c2030;
+  border: 1px solid #2a2e3e;
+  border-radius: 12px;
+  padding: 20px;
+  width: 320px;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.modal-sub {
+  font-size: 13px;
+  color: #8a90a8;
+  margin-bottom: 12px;
+}
+
+.modal-list {
+  margin-bottom: 12px;
+}
+
+.modal-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #2a2e3e;
+  font-size: 14px;
+}
+
+.modal-hint {
+  font-size: 11px;
+  color: #6a6e80;
+  margin-bottom: 10px;
+}

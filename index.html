@@ -1,11 +1,22 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=idle-kingdom.html">
-<title>⚔️ 방치형 왕국 - Idle Kingdom</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Idle Survivor — 방치형 자동전투</title>
 </head>
 <body>
-<p>게임으로 이동 중입니다... 자동으로 이동하지 않으면 <a href="idle-kingdom.html">여기</a>를 눌러주세요.</p>
+  <div id="app">
+    <main id="battle">
+      <canvas id="game"></canvas>
+    </main>
+    <aside id="panel">
+      <div id="hud"></div>
+      <nav id="tabs"></nav>
+      <div id="tab-content"></div>
+    </aside>
+  </div>
+  <div id="modal-root"></div>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

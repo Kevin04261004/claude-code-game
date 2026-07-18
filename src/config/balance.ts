@@ -1,0 +1,85 @@
+/**
+ * ★ 모든 게임 밸런스 수치의 유일한 출처 (ARCHITECTURE.md §0, §5.3)
+ * 여기 외의 곳에 매직 넘버로 밸런스 수치를 두지 않는다.
+ */
+export const BALANCE = {
+  // ── 시간/루프 ──
+  TICK_MS: 100,
+  TPS: 10,
+  MAX_CATCHUP_TICKS_PER_FRAME: 60,
+  CATCHUP_THRESHOLD_MS: 5 * 60_000,
+  AUTOSAVE_INTERVAL_MS: 30_000,
+  BACKUP_INTERVAL_MS: 60 * 60_000,
+
+  // ── 월드 ──
+  ARENA_RADIUS: 340,
+  SPAWN_RADIUS: 360,
+  PLAYER_RADIUS: 14,
+  GRID_CELL_SIZE: 48,
+  ENEMY_CAP: 300,
+  PROJECTILE_CAP: 400,
+  PROJECTILE_TTL_TICKS: 40,
+  MAX_ENEMY_RADIUS: 20, // 충돌 그리드 질의 패딩용 — enemies.ts의 radius 상한
+
+  // ── 플레이어 성장 ──
+  PLAYER_BASE_HP: 100,
+  PLAYER_HP_PER_LEVEL: 12,
+  PLAYER_BASE_REGEN: 2, // hp/sec
+  EXP_BASE: 25,
+  EXP_GROWTH: 1.13,
+  DEATH_STAGE_PENALTY: 1,
+
+  // ── 전투 공통 ──
+  CRIT_CHANCE: 0.1,
+  CRIT_MULT: 2,
+  SLOW_CAP: 0.6, // 감속 중첩 상한
+
+  // ── 무기 ──
+  WEAPON_DMG_GROWTH: 1.15,
+  WEAPON_COST_GROWTH: 1.17,
+  WEAPON_TIER_LEVELS: 10, // n레벨마다 외형 티어 1 상승
+
+  // ── 스킬 ──
+  SKILL_SLOTS: 4,
+  SKILL_LEVEL_DMG_GROWTH: 1.1,
+  SKILL_ROLL_COST_BASE: 60,
+  SKILL_ROLL_COST_GROWTH: 1.2,
+  SKILL_UPGRADE_COST_BASE: 40,
+  SKILL_UPGRADE_COST_GROWTH: 1.25,
+  GRADE_UNLOCK_STAGE_STEP: 4, // i등급은 최고 스테이지 i*step 도달부터 등장
+  ORBIT_HIT_PERIOD_TICKS: 3,
+  ORBIT_BLADE_RADIUS: 16,
+  ORBIT_SPIN_PER_TICK: 0.12, // rad/tick
+  AURA_HIT_PERIOD_TICKS: 5,
+  EXPLODE_RADIUS: 60,
+  MULTISHOT_SPREAD_RAD: 0.18,
+
+  // ── 스테이지 ──
+  STAGE_KILLS_BASE: 30,
+  STAGE_KILLS_GROWTH: 1.06,
+  STAGE_HP_GROWTH: 1.18,
+  STAGE_REWARD_GROWTH: 1.13,
+  STAGE_SPAWN_BASE: 1.2, // 적/초
+  STAGE_SPAWN_GROWTH: 1.03,
+  STAGE_SPAWN_CAP: 8,
+
+  // ── 오프라인 정산 (§5) ──
+  OFFLINE_MIN_MS: 5 * 60_000, // 이 미만은 실제 틱 재생으로 따라잡기
+  OFFLINE_EFFICIENCY: 0.5,
+  OFFLINE_CAP_BASE_HOURS: 16,
+  OFFLINE_CAP_MAX_HOURS: 48,
+  OFFLINE_OVERCAP_EFFICIENCY: 0.1,
+  OFFLINE_CHUNK_MINUTES: 10,
+  OFFLINE_SAMPLE_WARMUP_TICKS: 300, // 빈 전투장이 정상 상태 밀도에 도달하는 시간
+
+  OFFLINE_SAMPLE_TICKS: 300,
+  RESAMPLE_LEVEL_DELTA: 5,
+  OFFLINE_MAX_RESAMPLES: 64, // 재측정 비용 상한 — 초과 시 마지막 측정값 유지
+
+  // ── 점수/리더보드 ──
+  SCORE_PER_STAGE: 1000,
+  SCORE_PER_LEVEL: 50,
+  SCORE_PER_KILL: 1,
+  RIVAL_COUNT: 9,
+  RIVAL_SCORE_PER_HOUR: 130,
+} as const;
