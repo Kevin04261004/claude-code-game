@@ -8,7 +8,7 @@ import { TREE_NODES } from '../content/skill-tree';
 import { SKILL_GRADES } from '../content/skills/skill-grades';
 import { skillRollCost, skillSellPrice, skillUpgradeCost } from '../sim/progression/growth';
 import { decodeSkillId, rollProbabilities } from '../sim/skills/skill-catalog';
-import { composeSkill } from '../sim/skills/skill-composer';
+import { composeSkill, type SkillInstance } from '../sim/skills/skill-composer';
 import type { Simulation } from '../sim/simulation';
 import { button, el, fmt } from './dom';
 import { skillIconURL } from './skill-icon';
@@ -37,7 +37,10 @@ export class SkillsPanel {
     const s = this.sim.state;
     this.root.replaceChildren();
 
-    // ── 추첨 (확률 툴팁: 데스크톱은 호버, 터치는 ⓘ 토글) ──
+    // ── 상단 고정 영역: 추첨 + 장착 슬롯 (스크롤해도 움직이지 않음) ──
+    const sticky = el('div', 'skills-sticky');
+
+    // 추첨 (확률 툴팁: 데스크톱은 호버, 터치는 ⓘ 토글)
     const rollCost = skillRollCost(s.skills.rollCount);
     const rollWrap = el('div', 'tooltip-wrap');
     const rollRow = el('div', 'roll-row');
@@ -48,18 +51,19 @@ export class SkillsPanel {
       button('ⓘ', () => rollWrap.classList.toggle('open'), 'btn info'),
     );
     rollWrap.append(rollRow, this.buildRollTooltip());
-    this.root.append(rollWrap);
+    sticky.append(rollWrap);
 
-    // ── 장착 슬롯 (드랍 대상) ──
-    this.root.append(el('div', 'section-title', `장착 슬롯 (${BALANCE.SKILL_SLOTS})`));
+    // 장착 슬롯 (드랍 대상)
+    sticky.append(el('div', 'section-title', `장착 슬롯 (${BALANCE.SKILL_SLOTS})`));
     const slotGrid = el('div', 'slot-grid');
     s.skills.equipped.forEach((id, slot) => {
       slotGrid.append(this.buildSlotTile(id, slot));
     });
-    this.root.append(slotGrid);
-    this.root.append(
+    sticky.append(slotGrid);
+    sticky.append(
       el('div', 'dnd-hint', '아이콘을 끌어 장착 · 슬롯끼리 교체 · 슬롯에서 목록으로 끌면 해제'),
     );
+    this.root.append(sticky);
 
     // ── 보유 스킬 (슬롯에서 끌어오면 해제되는 드랍 존) ──
     this.root.append(el('div', 'section-title', `보유 스킬 (${s.skills.owned.length})`));
@@ -139,15 +143,62 @@ export class SkillsPanel {
     );
     const sellPrice = skillSellPrice(inst.gradeIndex, level, decodeSkillId(id).modIds.length);
     row.append(
-      button(`판매 (+${fmt(sellPrice)}G)`, () => {
-        if (window.confirm(`${inst.name} Lv.${inst.level}을(를) ${fmt(sellPrice)}G에 판매할까요? 되돌릴 수 없습니다.`)) {
-          void this.sim.execute({ type: 'sellSkill', skillId: id });
-        }
-      }, 'btn danger'),
+      button(`판매 (+${fmt(sellPrice)}G)`, () => this.showSellConfirm(id, inst, sellPrice), 'btn danger'),
     );
     body.append(row);
     card.append(body);
     return card;
+  }
+
+  // ── 판매 확인 모달 (인게임 UI — 브라우저 confirm 미사용) ──
+
+  private showSellConfirm(id: string, inst: SkillInstance, price: number): void {
+    const modalRoot = document.getElementById('modal-root');
+    if (!modalRoot) return;
+    const grade = SKILL_GRADES[inst.gradeId]!;
+
+    const overlay = el('div', 'modal-overlay');
+    const modal = el('div', 'modal');
+
+    const head = el('div', 'sell-head');
+    const icon = el('img', 'skill-icon') as HTMLImageElement;
+    icon.src = skillIconURL(id);
+    icon.draggable = false;
+    const headText = el('div');
+    const title = el('div', 'modal-title', inst.name);
+    title.style.color = grade.color;
+    headText.append(title, el('div', 'modal-sub', `Lv.${inst.level} · 데미지 ${fmt(inst.damage)}`));
+    head.append(icon, headText);
+    modal.append(head);
+
+    const list = el('div', 'modal-list');
+    const priceRow = el('div', 'modal-row');
+    priceRow.append(el('span', undefined, '💰 판매가'), el('span', 'hud-value', `+${fmt(price)}G`));
+    list.append(priceRow);
+    modal.append(list);
+
+    const equipped = this.sim.state.skills.equipped.includes(id);
+    modal.append(
+      el('div', 'modal-hint', equipped ? '장착 중인 스킬입니다 — 판매하면 슬롯에서 해제됩니다. 되돌릴 수 없습니다.' : '판매하면 되돌릴 수 없습니다.'),
+    );
+
+    const actions = el('div', 'modal-actions');
+    actions.append(
+      button('취소', () => overlay.remove(), 'btn secondary'),
+      button(`판매 (+${fmt(price)}G)`, () => {
+        overlay.remove();
+        void this.sim.execute({ type: 'sellSkill', skillId: id });
+      }, 'btn danger'),
+    );
+    modal.append(actions);
+
+    // 배경 클릭 = 취소
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    overlay.append(modal);
+    modalRoot.append(overlay);
   }
 
   // ── 아이콘 (드래그 핸들) ──

@@ -258,6 +258,21 @@ body {
 }
 
 /* ── 스킬 아이콘 / 장착 슬롯 / 드래그 앤 드랍 ── */
+/* 상단 고정 영역 — 보유 스킬/트리를 휠로 스크롤해도 추첨 버튼과 슬롯은 그대로 */
+.skills-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #161926;
+  margin: -10px -10px 0; /* panel-body 패딩(10px)을 상쇄해 가장자리까지 덮는다 */
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid #2a2e3e;
+}
+
+.skills-sticky + .section-title {
+  margin-top: 10px;
+}
+
 .skill-icon {
   width: 44px;
   height: 44px;
@@ -515,4 +530,29 @@ body {
   font-size: 11px;
   color: #6a6e80;
   margin-bottom: 10px;
+}
+
+/* ── 판매 확인 모달 ── */
+.sell-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.sell-head .skill-icon {
+  width: 52px;
+  height: 52px;
+  cursor: default;
+  touch-action: auto;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.modal-actions .btn {
+  flex: 1;
+  padding: 10px;
 }
