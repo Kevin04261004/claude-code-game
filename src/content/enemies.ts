@@ -17,10 +17,13 @@ export interface EnemyDef {
   color: string;
 }
 
+// 우주 테마: shape은 스프라이트 컨셉 키를 겸한다 —
+// circle=운석, square=거대 운석, triangle=외계 정찰선, diamond=외계 위습.
+// id는 저장 데이터에 남아 있으므로 테마가 바뀌어도 변경하지 않는다.
 export const ENEMIES: Record<string, EnemyDef> = {
   slime: {
     id: 'slime',
-    name: '슬라임',
+    name: '운석',
     hp: 20,
     speed: 36,
     touchDps: 8,
@@ -28,11 +31,11 @@ export const ENEMIES: Record<string, EnemyDef> = {
     exp: 3,
     radius: 10,
     shape: 'circle',
-    color: '#6fce6f',
+    color: '#a3907a',
   },
   bat: {
     id: 'bat',
-    name: '박쥐',
+    name: '외계 정찰선',
     hp: 12,
     speed: 62,
     touchDps: 6,
@@ -44,7 +47,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   },
   brute: {
     id: 'brute',
-    name: '브루트',
+    name: '거대 운석',
     hp: 70,
     speed: 24,
     touchDps: 16,
@@ -52,11 +55,11 @@ export const ENEMIES: Record<string, EnemyDef> = {
     exp: 8,
     radius: 15,
     shape: 'square',
-    color: '#d86a5a',
+    color: '#8a7160',
   },
   wisp: {
     id: 'wisp',
-    name: '위습',
+    name: '외계 위습',
     hp: 30,
     speed: 48,
     touchDps: 10,
