@@ -21,7 +21,11 @@ jobs:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5 # 레거시(브랜치 서빙) → 워크플로 배포로 전환
+      - name: Switch Pages source to GitHub Actions (from legacy branch serving)
+        run: gh api -X PUT "repos/${{ github.repository }}/pages" -f build_type=workflow || echo "::warning::Pages 설정 전환 실패 — Settings > Pages에서 Source를 'GitHub Actions'로 수동 변경 필요"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/configure-pages@v5
       - uses: actions/setup-node@v4
         with:
           node-version: 22
