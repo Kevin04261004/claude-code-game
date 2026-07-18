@@ -34,6 +34,17 @@ export const BALANCE = {
   CRIT_MULT: 2,
   SLOW_CAP: 0.6, // 감속 중첩 상한
 
+  // ── 적 공격 방식 ──
+  // 자폭/탄환 피해도 touchDps처럼 스테이지 배율로 성장하므로 배수는 보수적으로:
+  // 기존 접촉 방식의 "평균 접촉 시간 × dps"와 비슷한 기대 피해가 되도록 맞춘다.
+  KAMIKAZE_DMG_MULT: 0.8, // 자폭(운석) 피해 = touchDps × 배수, 1회
+  RANGED_ATTACK_RANGE: 80, // 정찰선 사거리 — 회전 칼날 궤도(70)+칼날(16)이 닿는 언저리
+  RANGED_FIRE_COOLDOWN_TICKS: 25,
+  RANGED_BULLET_SPEED: 140, // units/sec
+  RANGED_BULLET_DMG_MULT: 1.5, // 탄환 피해 = touchDps × 배수
+  RANGED_BULLET_RADIUS: 4,
+  ENEMY_BULLET_TTL_TICKS: 50,
+
   // ── 무기 ──
   WEAPON_DMG_GROWTH: 1.15,
   WEAPON_COST_GROWTH: 1.17,

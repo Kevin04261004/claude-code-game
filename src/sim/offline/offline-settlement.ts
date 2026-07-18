@@ -45,6 +45,7 @@ function measureRates(state: SimState): Rates {
   // 측정은 빈 전투장에서 시작해 워밍업으로 밀도를 채운 뒤 계측한다
   clone.enemies = [];
   clone.projectiles = [];
+  clone.enemyProjectiles = [];
   clone.cooldowns = {};
   clone.spawnAcc = 0;
   const bus = nullBus();

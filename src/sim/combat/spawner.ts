@@ -45,5 +45,8 @@ function spawnOne(state: SimState, rng: Rng): void {
     exp: def.exp * rwM,
     radius: def.radius,
     statuses: [],
+    attack: def.attack,
+    // 원거리형은 개체별로 초탄 시점을 어긋나게 — 일제사격 방지 (id 기반이라 결정론 유지)
+    fireCooldown: def.attack === 'ranged' ? state.nextId % BALANCE.RANGED_FIRE_COOLDOWN_TICKS : 0,
   });
 }

@@ -4,17 +4,26 @@
  */
 export type EnemyShape = 'circle' | 'triangle' | 'square' | 'diamond';
 
+/**
+ * 공격 방식:
+ *  - contact  : 접촉 중 지속 피해 (기존 방식)
+ *  - kamikaze : 접촉 시 1회 폭발 피해를 주고 스스로 소멸 (처치 보상 없음)
+ *  - ranged   : 사거리에서 멈춰 플레이어에게 탄환 발사
+ */
+export type EnemyAttackKind = 'contact' | 'kamikaze' | 'ranged';
+
 export interface EnemyDef {
   id: string;
   name: string;
   hp: number;
   speed: number; // units/sec
-  touchDps: number; // 접촉 시 초당 피해
+  touchDps: number; // 피해 기준치 — contact: 초당, kamikaze/ranged: 배수의 기반 (BALANCE 참조)
   gold: number;
   exp: number;
   radius: number;
   shape: EnemyShape;
   color: string;
+  attack: EnemyAttackKind;
 }
 
 // 우주 테마: shape은 스프라이트 컨셉 키를 겸한다 —
@@ -32,6 +41,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     radius: 10,
     shape: 'circle',
     color: '#a3907a',
+    attack: 'kamikaze',
   },
   bat: {
     id: 'bat',
@@ -44,6 +54,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     radius: 8,
     shape: 'triangle',
     color: '#a678d8',
+    attack: 'ranged',
   },
   brute: {
     id: 'brute',
@@ -56,6 +67,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     radius: 15,
     shape: 'square',
     color: '#8a7160',
+    attack: 'kamikaze',
   },
   wisp: {
     id: 'wisp',
@@ -68,5 +80,6 @@ export const ENEMIES: Record<string, EnemyDef> = {
     radius: 9,
     shape: 'diamond',
     color: '#5ad8d0',
+    attack: 'contact',
   },
 };

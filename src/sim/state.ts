@@ -3,6 +3,7 @@
  * DOM/Canvas 참조 금지. structuredClone 가능해야 한다(오프라인 표본 측정).
  * px/py(직전 틱 위치)는 렌더 보간용이며 세이브에는 저장되지 않는다.
  */
+import type { EnemyAttackKind } from '../content/enemies';
 import type { StatusKind, StatusSpec } from '../content/skills/skill-elements';
 
 export interface StatusInstance {
@@ -26,6 +27,23 @@ export interface Enemy {
   exp: number;
   radius: number;
   statuses: StatusInstance[];
+  attack: EnemyAttackKind;
+  fireCooldown: number; // ranged 전용: 다음 발사까지 남은 틱
+}
+
+/** 적이 쏜 탄환 — 플레이어만 맞힌다 (적 아군 오사 없음) */
+export interface EnemyProjectile {
+  id: number;
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  vx: number; // units/tick
+  vy: number;
+  damage: number;
+  radius: number;
+  ttl: number;
+  dead: boolean;
 }
 
 export interface Projectile {
@@ -119,6 +137,7 @@ export interface SimState {
   // ── 전투장 순간 상태 (세이브에 저장하지 않음, §6) ──
   enemies: Enemy[];
   projectiles: Projectile[];
+  enemyProjectiles: EnemyProjectile[];
   cooldowns: Record<string, number>; // 'weapon' 및 스킬 ID별 남은 틱
   orbitAngle: number;
   spawnAcc: number;

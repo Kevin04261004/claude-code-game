@@ -74,7 +74,7 @@ export class Simulation {
     };
 
     tickSpawner(s, this.rng);
-    tickMovement(s, BALANCE.PLAYER_BASE_REGEN + bonuses.regenAdd);
+    tickMovement(s, BALANCE.PLAYER_BASE_REGEN + bonuses.regenAdd, this.bus);
     this.grid.build(s.enemies);
     resolveProjectiles(s, this.grid, ctx);
     s.orbitAngle = (s.orbitAngle + BALANCE.ORBIT_SPIN_PER_TICK) % TWO_PI;
@@ -85,6 +85,7 @@ export class Simulation {
     // 정리: 죽은 적/소멸한 투사체 제거 (틱 중에는 hp<=0 마킹만)
     if (s.enemies.some((e) => e.hp <= 0)) s.enemies = s.enemies.filter((e) => e.hp > 0);
     if (s.projectiles.some((p) => p.dead)) s.projectiles = s.projectiles.filter((p) => !p.dead);
+    if (s.enemyProjectiles.some((b) => b.dead)) s.enemyProjectiles = s.enemyProjectiles.filter((b) => !b.dead);
 
     checkStageClear(s, this.bus);
     this.checkDeath(s);
@@ -125,6 +126,7 @@ export class Simulation {
     if (s.player.hp > 0) return;
     s.enemies = [];
     s.projectiles = [];
+    s.enemyProjectiles = [];
     s.player.hp = s.player.maxHp;
     s.stage.index = Math.max(0, s.stage.index - BALANCE.DEATH_STAGE_PENALTY);
     s.stage.kills = 0;

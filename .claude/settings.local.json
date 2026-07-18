@@ -27,7 +27,9 @@
       "Bash(npx playwright *)",
       "Bash(sudo npx playwright install-deps chromium)",
       "Bash(gh run *)",
-      "Bash(grep -iA2 'Switch Pages')"
+      "Bash(grep -iA2 'Switch Pages')",
+      "Bash(python3 *)",
+      "Bash(npx vite-node *)"
     ]
   }
 }

@@ -42,6 +42,8 @@ export function makeEnemy(id: number, x: number, y: number, hp = 100): Enemy {
     exp: 5,
     radius: 10,
     statuses: [],
+    attack: 'contact', // 전투 테스트 기본값 — 공격 방식 테스트는 개별 필드를 덮어쓴다
+    fireCooldown: 0,
   };
 }
 

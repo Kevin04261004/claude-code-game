@@ -12,7 +12,7 @@ import type { SimState } from '../sim/state';
 import { Camera } from './camera';
 import { EffectsLayer } from './effects';
 import { drawAuras, drawOrbits, drawProjectiles } from './skill-visuals';
-import { shipSprite, spaceEnemySprite } from './sprite-cache';
+import { projectileSprite, shipSprite, spaceEnemySprite } from './sprite-cache';
 import { Starfield } from './starfield';
 import { drawWeapon } from './weapon-visuals';
 
@@ -71,6 +71,7 @@ export class CanvasRenderer implements IRenderer {
     drawAuras(ctx, cam, this.sim.equippedInstances(), now);
     this.drawEnemies(state, alpha, now);
     drawProjectiles(ctx, cam, state, alpha);
+    this.drawEnemyBullets(state, alpha);
     drawOrbits(ctx, cam, state, this.sim.equippedInstances());
     this.drawPlayer(state, now);
 
@@ -107,6 +108,17 @@ export class CanvasRenderer implements IRenderer {
         this.ctx.fillStyle = '#e05a5a';
         this.ctx.fillRect(x - w / 2, y - this.cam.r(e.radius) - 6, (w * e.hp) / e.maxHp, 3);
       }
+    }
+  }
+
+  /** 적 탄환 — 정찰선의 플라즈마 볼트 (붉은 발광으로 아군 투사체와 구분) */
+  private drawEnemyBullets(state: SimState, alpha: number): void {
+    for (const b of state.enemyProjectiles) {
+      if (b.dead) continue;
+      const x = this.cam.x(b.px + (b.x - b.px) * alpha);
+      const y = this.cam.y(b.py + (b.y - b.py) * alpha);
+      const sprite = projectileSprite('#ff5a7a', this.cam.r(b.radius), 1);
+      this.ctx.drawImage(sprite, x - sprite.width / 2, y - sprite.height / 2);
     }
   }
 
