@@ -21,6 +21,7 @@ jobs:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5 # 레거시(브랜치 서빙) → 워크플로 배포로 전환
       - uses: actions/setup-node@v4
         with:
           node-version: 22
