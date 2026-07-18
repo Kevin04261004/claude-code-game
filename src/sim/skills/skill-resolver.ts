@@ -24,6 +24,13 @@ export interface ProjectileSpec {
   explodePct: number;
   canCrit: boolean;
   tint: string | null;
+  styleKey: string | null;
+  gradeIndex: number;
+}
+
+/** 회전 스킬 다중 장착 시 슬롯(장착 순서)별 위상차 — 렌더러와 반드시 동일 공식 */
+export function orbitPhase(instanceIndex: number): number {
+  return instanceIndex * BALANCE.ORBIT_PHASE_OFFSET_RAD;
 }
 
 /** 발사체 생성 — 무기 공격(simulation.ts)과 bolt 스킬이 공용 */
@@ -48,19 +55,22 @@ export function spawnProjectile(state: SimState, spec: ProjectileSpec): void {
     explodePct: spec.explodePct,
     canCrit: spec.canCrit,
     tint: spec.tint,
+    styleKey: spec.styleKey,
+    gradeIndex: spec.gradeIndex,
     hitIds: [],
     dead: false,
   });
 }
 
 export function tickSkills(state: SimState, instances: SkillInstance[], grid: SpatialGrid, ctx: CombatCtx): void {
-  for (const inst of instances) {
+  for (let i = 0; i < instances.length; i++) {
+    const inst = instances[i]!;
     switch (inst.behavior) {
       case 'bolt':
         tickBolt(state, inst);
         break;
       case 'orbit':
-        tickOrbit(state, inst, grid, ctx);
+        tickOrbit(state, inst, grid, ctx, orbitPhase(i));
         break;
       case 'nova':
         tickNova(state, inst, grid, ctx);
@@ -100,16 +110,18 @@ function tickBolt(state: SimState, inst: SkillInstance): void {
       explodePct: inst.explodePct,
       canCrit: true,
       tint: inst.tint,
+      styleKey: inst.baseId,
+      gradeIndex: inst.gradeIndex,
     });
   }
   state.cooldowns[inst.id] = inst.cooldownTicks;
 }
 
-function tickOrbit(state: SimState, inst: SkillInstance, grid: SpatialGrid, ctx: CombatCtx): void {
+function tickOrbit(state: SimState, inst: SkillInstance, grid: SpatialGrid, ctx: CombatCtx, phase: number): void {
   if (state.tick % BALANCE.ORBIT_HIT_PERIOD_TICKS !== 0) return;
   const bladeR = BALANCE.ORBIT_BLADE_RADIUS;
   for (let i = 0; i < inst.count; i++) {
-    const angle = state.orbitAngle + (i * TWO_PI) / inst.count;
+    const angle = state.orbitAngle + phase + (i * TWO_PI) / inst.count;
     const bx = dCos(angle) * inst.radius;
     const by = dSin(angle) * inst.radius;
     for (const e of grid.query(bx, by, bladeR)) {

@@ -47,6 +47,8 @@ export const BALANCE = {
   SKILL_UPGRADE_COST_BASE: 40,
   SKILL_UPGRADE_COST_GROWTH: 1.25,
   GRADE_UNLOCK_STAGE_STEP: 4, // i등급은 최고 스테이지 i*step 도달부터 등장
+  SKILL_MOD_COUNT_WEIGHTS: [0.4, 0.4, 0.2] as const, // 변형 0/1/2개 확률
+  ORBIT_PHASE_OFFSET_RAD: 0.9, // 회전 스킬 다중 장착 시 슬롯별 위상차 (겹침 방지)
   ORBIT_HIT_PERIOD_TICKS: 3,
   ORBIT_BLADE_RADIUS: 16,
   ORBIT_SPIN_PER_TICK: 0.12, // rad/tick

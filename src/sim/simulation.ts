@@ -114,6 +114,8 @@ export class Simulation {
       explodePct: 0,
       canCrit: true,
       tint: null,
+      styleKey: 'weapon',
+      gradeIndex: 0,
     });
     s.cooldowns['weapon'] = eq.def.cooldownTicks;
   }

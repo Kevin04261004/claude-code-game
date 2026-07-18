@@ -25,7 +25,9 @@
       "Bash(compgen -c)",
       "Bash(npx --no-install playwright --version)",
       "Bash(npx playwright *)",
-      "Bash(sudo npx playwright install-deps chromium)"
+      "Bash(sudo npx playwright install-deps chromium)",
+      "Bash(gh run *)",
+      "Bash(grep -iA2 'Switch Pages')"
     ]
   }
 }

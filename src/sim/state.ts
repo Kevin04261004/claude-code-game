@@ -46,6 +46,10 @@ export interface Projectile {
   explodePct: number;
   canCrit: boolean;
   tint: string | null;
+  /** 렌더 스타일 키: 'weapon' 또는 스킬 기본형 id — 외형 결정 (렌더 전용) */
+  styleKey: string | null;
+  /** 등급 인덱스 — 렌더에서 발광 강도로 사용 (렌더 전용) */
+  gradeIndex: number;
   hitIds: number[]; // 이미 맞힌 적 (관통용)
   dead: boolean;
 }

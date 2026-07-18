@@ -68,6 +68,33 @@ export function maxGradeIndexFor(highestStageIndex: number): number {
   return Math.min(GRADE_ORDER.length - 1, byStage);
 }
 
+export interface RollProbabilities {
+  /** 열린 등급별 확률(%) — rollSkillCombo의 가중치(1/2^i)와 동일 공식 */
+  grades: { id: string; name: string; color: string; pct: number }[];
+  /** 변형 옵션 0/1/2개 확률(%) */
+  modCounts: number[];
+  /** 다음 등급이 열리는 스테이지 번호(1-based 표시용). 전부 열렸으면 null */
+  nextGradeUnlockStage: number | null;
+}
+
+/** 뽑기 확률 표 — UI 툴팁용. 실제 추첨(rollSkillCombo)과 같은 수치에서 파생 */
+export function rollProbabilities(highestStageIndex: number): RollProbabilities {
+  const maxGrade = maxGradeIndexFor(highestStageIndex);
+  const weights = GRADE_ORDER.slice(0, maxGrade + 1).map((_, i) => 1 / (1 << i));
+  const total = weights.reduce((a, b) => a + b, 0);
+  const grades = GRADE_ORDER.slice(0, maxGrade + 1).map((g, i) => ({
+    id: g.id,
+    name: g.name,
+    color: g.color,
+    pct: ((weights[i] ?? 0) / total) * 100,
+  }));
+  const modTotal = BALANCE.SKILL_MOD_COUNT_WEIGHTS.reduce((a, b) => a + b, 0);
+  const modCounts = BALANCE.SKILL_MOD_COUNT_WEIGHTS.map((w) => (w / modTotal) * 100);
+  const nextGradeUnlockStage =
+    maxGrade < GRADE_ORDER.length - 1 ? (maxGrade + 1) * BALANCE.GRADE_UNLOCK_STAGE_STEP + 1 : null;
+  return { grades, modCounts, nextGradeUnlockStage };
+}
+
 /** 랜덤 스킬 추첨 — 등급은 높은 쪽이 희귀하도록 가중 */
 export function rollSkillCombo(rng: Rng, highestStageIndex: number): SkillCombo {
   const baseIds = Object.keys(SKILL_BASES);
@@ -85,8 +112,7 @@ export function rollSkillCombo(rng: Rng, highestStageIndex: number): SkillCombo 
   const allowedMods = Object.keys(SKILL_MODS).filter((m) =>
     SKILL_MODS[m]!.allowedBehaviors.includes(base.behavior),
   );
-  const modCountRoll = rng.next();
-  const modCount = modCountRoll < 0.4 ? 0 : modCountRoll < 0.8 ? 1 : 2;
+  const modCount = rng.weighted(BALANCE.SKILL_MOD_COUNT_WEIGHTS);
   const modIds: string[] = [];
   const pool = [...allowedMods];
   for (let i = 0; i < modCount && pool.length > 0; i++) {

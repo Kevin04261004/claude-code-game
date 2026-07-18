@@ -89,7 +89,8 @@
    │
    ├─ render/                     # IRenderer 구현 (sim을 읽기만 함, 쓰기 금지)
    │  ├─ canvas-renderer.ts       # Canvas 2D 구현체: 프레임 루프, 보간 렌더링
-   │  ├─ sprite-cache.ts          # 절차적 스프라이트를 오프스크린 캔버스에 캐싱
+   │  ├─ sprite-cache.ts          # 절차적 스프라이트(구체/창/칼날)를 오프스크린 캔버스에 캐싱
+   │  ├─ skill-visuals.ts         # 스킬별 전투 비주얼: 기본형별 발사체 형태, 궤도 칼날, 오라 구분 애니메이션
    │  ├─ weapon-visuals.ts        # 강화 티어 → 무기 외형 매핑/합성 (색, 이펙트, 형태)
    │  ├─ effects.ts               # 타격 이펙트, 데미지 숫자 (이벤트 버스 구독)
    │  └─ camera.ts                # 뷰포트/좌표 변환

@@ -22,6 +22,8 @@ function makeProjectile(id: number, px: number, py: number, x: number, y: number
     explodePct: 0,
     canCrit: false,
     tint: null,
+    styleKey: null,
+    gradeIndex: 0,
     hitIds: [],
     dead: false,
   };

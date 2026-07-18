@@ -5,6 +5,7 @@ import { BALANCE } from '../config/balance';
 import { TREE_NODES } from '../content/skill-tree';
 import { SKILL_GRADES } from '../content/skills/skill-grades';
 import { skillRollCost, skillUpgradeCost } from '../sim/progression/growth';
+import { rollProbabilities } from '../sim/skills/skill-catalog';
 import { composeSkill } from '../sim/skills/skill-composer';
 import type { Simulation } from '../sim/simulation';
 import { button, el, fmt } from './dom';
@@ -23,13 +24,16 @@ export class SkillsPanel {
     const s = this.sim.state;
     this.root.replaceChildren();
 
-    // ── 추첨 ──
+    // ── 추첨 (호버 시 확률 툴팁) ──
     const rollCost = skillRollCost(s.skills.rollCount);
-    this.root.append(
+    const rollWrap = el('div', 'tooltip-wrap');
+    rollWrap.append(
       button(`🎲 스킬 추첨 (${fmt(rollCost)}G)`, () => {
         this.sim.execute({ type: 'rollSkill' });
       }, 'btn wide'),
+      this.buildRollTooltip(),
     );
+    this.root.append(rollWrap);
 
     // ── 장착 슬롯 ──
     const slotsTitle = el('div', 'section-title', `장착 슬롯 (${BALANCE.SKILL_SLOTS})`);
@@ -91,5 +95,31 @@ export class SkillsPanel {
       }
       this.root.append(card);
     }
+  }
+
+  /** 실제 추첨 로직(skill-catalog)과 같은 수치에서 파생된 확률 표 */
+  private buildRollTooltip(): HTMLElement {
+    const probs = rollProbabilities(this.sim.state.stage.highestIndex);
+    const tip = el('div', 'tooltip');
+    tip.append(el('div', 'tooltip-title', '등급 확률'));
+    for (const g of probs.grades) {
+      const row = el('div', 'tooltip-row');
+      const name = el('span', undefined, g.name);
+      name.style.color = g.color;
+      row.append(name, el('span', undefined, `${g.pct.toFixed(1)}%`));
+      tip.append(row);
+    }
+    if (probs.nextGradeUnlockStage !== null) {
+      tip.append(el('div', 'tooltip-hint', `🔒 다음 등급은 스테이지 ${probs.nextGradeUnlockStage} 도달 시 해금`));
+    }
+    tip.append(el('div', 'tooltip-title', '변형 옵션 개수'));
+    const modRow = el('div', 'tooltip-row');
+    modRow.append(
+      el('span', undefined, '0개 / 1개 / 2개'),
+      el('span', undefined, probs.modCounts.map((p) => `${p.toFixed(0)}%`).join(' / ')),
+    );
+    tip.append(modRow);
+    tip.append(el('div', 'tooltip-hint', '기본형·속성은 균등 확률 · 중복 획득 시 레벨 +1'));
+    return tip;
   }
 }

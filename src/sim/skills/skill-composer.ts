@@ -15,6 +15,7 @@ export interface SkillInstance {
   id: string; // 정규 ID
   name: string;
   level: number;
+  baseId: string;
   behavior: BehaviorId;
   elementId: string;
   gradeId: string;
@@ -78,6 +79,7 @@ export function composeSkill(id: string, level: number): SkillInstance {
     id: encodeSkillId(combo),
     name,
     level,
+    baseId: base.id,
     behavior: base.behavior,
     elementId: element.id,
     gradeId: grade.id,

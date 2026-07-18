@@ -11,7 +11,8 @@ import type { Simulation } from '../sim/simulation';
 import type { SimState } from '../sim/state';
 import { Camera } from './camera';
 import { EffectsLayer } from './effects';
-import { projectileSprite, shapeSprite } from './sprite-cache';
+import { drawAuras, drawOrbits, drawProjectiles } from './skill-visuals';
+import { shapeSprite } from './sprite-cache';
 import { drawWeapon } from './weapon-visuals';
 
 export class CanvasRenderer implements IRenderer {
@@ -59,26 +60,14 @@ export class CanvasRenderer implements IRenderer {
     ctx.arc(cam.x(0), cam.y(0), cam.r(BALANCE.ARENA_RADIUS), 0, Math.PI * 2);
     ctx.stroke();
 
-    this.drawAuras(state);
+    drawAuras(ctx, cam, this.sim.equippedInstances(), now);
     this.drawEnemies(state, alpha);
-    this.drawProjectiles(state, alpha);
-    this.drawOrbits(state);
+    drawProjectiles(ctx, cam, state, alpha);
+    drawOrbits(ctx, cam, state, this.sim.equippedInstances());
     this.drawPlayer(state);
 
     this.effects.update(dt);
     this.effects.draw(ctx, cam);
-  }
-
-  private drawAuras(state: SimState): void {
-    for (const inst of this.sim.equippedInstances()) {
-      if (inst.behavior !== 'aura') continue;
-      this.ctx.fillStyle = `${inst.tint}18`;
-      this.ctx.strokeStyle = `${inst.tint}55`;
-      this.ctx.beginPath();
-      this.ctx.arc(this.cam.x(0), this.cam.y(0), this.cam.r(inst.radius), 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.stroke();
-    }
   }
 
   private drawEnemies(state: SimState, alpha: number): void {
@@ -96,28 +85,6 @@ export class CanvasRenderer implements IRenderer {
         this.ctx.fillRect(x - w / 2, y - this.cam.r(e.radius) - 6, w, 3);
         this.ctx.fillStyle = '#e05a5a';
         this.ctx.fillRect(x - w / 2, y - this.cam.r(e.radius) - 6, (w * e.hp) / e.maxHp, 3);
-      }
-    }
-  }
-
-  private drawProjectiles(state: SimState, alpha: number): void {
-    for (const p of state.projectiles) {
-      const x = this.cam.x(p.px + (p.x - p.px) * alpha);
-      const y = this.cam.y(p.py + (p.y - p.py) * alpha);
-      const sprite = projectileSprite(p.tint ?? '#cfd6ff', this.cam.r(p.radius));
-      this.ctx.drawImage(sprite, x - sprite.width / 2, y - sprite.height / 2);
-    }
-  }
-
-  private drawOrbits(state: SimState): void {
-    for (const inst of this.sim.equippedInstances()) {
-      if (inst.behavior !== 'orbit') continue;
-      for (let i = 0; i < inst.count; i++) {
-        const angle = state.orbitAngle + (i * Math.PI * 2) / inst.count;
-        const x = this.cam.x(Math.cos(angle) * inst.radius);
-        const y = this.cam.y(Math.sin(angle) * inst.radius);
-        const sprite = projectileSprite(inst.tint, this.cam.r(BALANCE.ORBIT_BLADE_RADIUS * 0.6));
-        this.ctx.drawImage(sprite, x - sprite.width / 2, y - sprite.height / 2);
       }
     }
   }
