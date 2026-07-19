@@ -10,6 +10,7 @@ export const BALANCE = {
   CATCHUP_THRESHOLD_MS: 5 * 60_000,
   AUTOSAVE_INTERVAL_MS: 30_000,
   BACKUP_INTERVAL_MS: 60 * 60_000,
+  CLOUD_UPLOAD_DEBOUNCE_MS: 60_000, // 로컬 저장 후 클라우드 미러 업로드까지의 디바운스 (§9.3)
 
   // ── 월드 ──
   ARENA_RADIUS: 340,
