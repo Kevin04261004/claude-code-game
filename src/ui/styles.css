@@ -588,6 +588,49 @@ body {
   margin-bottom: 10px;
 }
 
+/* ── 계정/클라우드 동기화 ── */
+.btn.account {
+  padding: 2px 10px;
+  font-size: 12px;
+  min-height: 0;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #2a2e3e;
+}
+
+.btn.account:hover {
+  background: #383e52;
+}
+
+.conflict-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.conflict-col {
+  background: #161926;
+  border: 1px solid #2a2e3e;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.conflict-title {
+  font-size: 12px;
+  color: #8a90a8;
+  margin-bottom: 6px;
+}
+
+.conflict-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
 /* ── 판매 확인 모달 ── */
 .sell-head {
   display: flex;

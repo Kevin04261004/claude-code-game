@@ -12,6 +12,7 @@ import { registerVisibility } from '../loop/visibility';
 import { CanvasRenderer } from '../render/canvas-renderer';
 import { settleOffline } from '../sim/offline/offline-settlement';
 import { Simulation } from '../sim/simulation';
+import type { SaveDataV1 } from '../save/save-schema';
 import { fromSave, newGameState, toSave } from '../save/serializer';
 import { SaveStorage, LocalStore } from '../save/storage';
 import { Hud } from '../ui/hud';
@@ -34,9 +35,12 @@ export function bootstrap(): void {
   // 2) 시뮬 생성
   const bus = new EventBus();
   const sim = new Simulation(state, bus);
+  let cloudNotify: ((save: SaveDataV1) => void) | null = null; // 클라우드 미러 부트 전에는 null (§9.3)
   const saveNow = () => {
     updateBestScore(state);
-    storage.write(toSave(state, clock.now()));
+    const save = toSave(state, clock.now());
+    storage.write(save);
+    cloudNotify?.(save);
   };
 
   // 3) 오프라인 정산 (시작 시점, §5)
@@ -68,6 +72,21 @@ export function bootstrap(): void {
 
   registerVisibility({ clock, sim, loop, saveNow, onSettled: showOfflineModal });
   setInterval(saveNow, BALANCE.AUTOSAVE_INTERVAL_MS); // 탭이 숨겨지면 브라우저가 스로틀 — 숨김 시 저장은 visibility가 담당
+
+  // 6) 클라우드 동기화 (§9) — dynamic import로 firebase 청크 분리, 실패해도 게임은 로컬 전용으로 계속
+  void import('../cloud/boot')
+    .then(({ startCloud }) =>
+      startCloud({
+        currentSave: () => toSave(state, clock.now()),
+        writeLocalSave: (s) => storage.write(s),
+        hudRoot: document.getElementById('hud')!,
+        onUploaderReady: (notify) => {
+          cloudNotify = notify;
+        },
+        reload: () => location.reload(),
+      }),
+    )
+    .catch((e) => console.warn('[cloud] 클라우드 동기화 비활성 — 로컬 저장만 사용합니다', e));
 }
 
 function mountTabs(sim: Simulation, clock: SystemClock): void {
