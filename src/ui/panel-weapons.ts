@@ -4,7 +4,7 @@
 import { WEAPONS } from '../content/weapons';
 import { weaponDamage, weaponTier, weaponUpgradeCost } from '../sim/progression/growth';
 import type { Simulation } from '../sim/simulation';
-import { button, el, fmt } from './dom';
+import { button, el, fmt, repeatButton } from './dom';
 
 export class WeaponsPanel {
   readonly root = el('div', 'panel-body');
@@ -34,9 +34,9 @@ export class WeaponsPanel {
       const row = el('div', 'card-actions');
       const cost = weaponUpgradeCost(def, slot.level);
       row.append(
-        button(`강화 (${fmt(cost)}G)`, () => {
+        // 꾹 누르면 뗄 때까지 연속 강화 — 성공 시 weaponUpgraded 이벤트가 refresh를 부른다
+        repeatButton(`강화 (${fmt(cost)}G)`, () => {
           this.sim.execute({ type: 'upgradeWeapon', weaponId: slot.weaponId });
-          this.refresh();
         }),
       );
       if (!slot.equipped) {

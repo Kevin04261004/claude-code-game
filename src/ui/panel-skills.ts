@@ -10,7 +10,7 @@ import { skillRollCost, skillSellPrice, skillUpgradeCost } from '../sim/progress
 import { decodeSkillId, rollProbabilities } from '../sim/skills/skill-catalog';
 import { composeSkill, type SkillInstance } from '../sim/skills/skill-composer';
 import type { Simulation } from '../sim/simulation';
-import { button, el, fmt } from './dom';
+import { button, el, fmt, repeatButton } from './dom';
 import { skillIconURL } from './skill-icon';
 
 /** 드래그 출처 — 보유 목록에서 시작했는지, 슬롯에서 시작했는지 */
@@ -141,7 +141,8 @@ export class SkillsPanel {
     const row = el('div', 'card-actions');
     const upCost = skillUpgradeCost(inst.gradeIndex, level);
     row.append(
-      button(`강화 (${fmt(upCost)}G)`, () => void this.sim.execute({ type: 'upgradeSkill', skillId: id })),
+      // 꾹 누르면 뗄 때까지 연속 강화
+      repeatButton(`강화 (${fmt(upCost)}G)`, () => void this.sim.execute({ type: 'upgradeSkill', skillId: id })),
     );
     const sellPrice = skillSellPrice(inst.gradeIndex, level, decodeSkillId(id).modIds.length);
     row.append(
