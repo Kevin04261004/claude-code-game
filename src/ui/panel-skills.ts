@@ -40,7 +40,7 @@ export class SkillsPanel {
     // ── 상단 고정 영역: 추첨 + 장착 슬롯 (스크롤해도 움직이지 않음) ──
     const sticky = el('div', 'skills-sticky');
 
-    // 추첨 (확률 툴팁: 데스크톱은 호버, 터치는 ⓘ 토글)
+    // 추첨 (확률 툴팁: ⓘ 클릭으로 열고, 마우스가 영역을 벗어나면 닫힘)
     const rollCost = skillRollCost(s.skills.rollCount);
     const rollWrap = el('div', 'tooltip-wrap');
     const rollRow = el('div', 'roll-row');
@@ -51,6 +51,8 @@ export class SkillsPanel {
       button('ⓘ', () => rollWrap.classList.toggle('open'), 'btn info'),
     );
     rollWrap.append(rollRow, this.buildRollTooltip());
+    // 터치에서는 emulated mouseleave가 다른 곳을 탭할 때 발생하므로 그대로 닫기 동작이 된다
+    rollWrap.addEventListener('mouseleave', () => rollWrap.classList.remove('open'));
     sticky.append(rollWrap);
 
     // 장착 슬롯 (드랍 대상)

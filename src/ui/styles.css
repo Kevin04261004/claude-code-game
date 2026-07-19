@@ -470,14 +470,7 @@ body {
   font-size: 12px;
 }
 
-/* 데스크톱(실제 호버 지원 기기)만 호버로 열기 — 터치의 sticky hover 방지 */
-@media (hover: hover) and (pointer: fine) {
-  .tooltip-wrap:hover .tooltip {
-    display: block;
-  }
-}
-
-/* 터치: ⓘ 버튼 토글 */
+/* ⓘ 버튼 클릭으로만 열림 (호버로는 열리지 않음 — 마우스가 벗어나면 JS가 닫는다) */
 .tooltip-wrap.open .tooltip {
   display: block;
 }
