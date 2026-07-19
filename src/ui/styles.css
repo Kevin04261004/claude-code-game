@@ -60,6 +60,48 @@ body {
     border-top: 1px solid #2a2e3e;
     padding-bottom: env(safe-area-inset-bottom); /* 홈 인디케이터 영역 회피 */
   }
+
+  /* 스킬 상단 고정 영역: 세로 스택 대신 가로 한 줄(추첨 버튼 + 슬롯)로 압축 —
+     패널 높이가 좁은 모바일에서 스크롤 공간을 확보한다 */
+  .skills-sticky {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .skills-sticky .tooltip-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .skills-sticky .roll-row .btn.wide {
+    margin: 0;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .skills-sticky .btn.info {
+    margin: 0;
+    width: 36px;
+  }
+
+  .skills-sticky .section-title,
+  .skills-sticky .dnd-hint {
+    display: none;
+  }
+
+  .skills-sticky .slot-grid {
+    flex: 0 0 auto;
+    grid-template-columns: repeat(4, 42px);
+    gap: 6px;
+    margin-bottom: 0;
+  }
+
+  .skills-sticky .tooltip {
+    right: auto;
+    width: min(260px, calc(100vw - 20px));
+  }
 }
 
 /* ── 모바일 가로(납작한 화면): 좌우 배치 유지하되 패널 축소 ── */
@@ -75,6 +117,27 @@ body {
   .hud-row {
     font-size: 13px;
     margin-bottom: 2px;
+  }
+
+  /* 화면 높이가 낮으므로 스킬 고정 영역도 압축: 제목/힌트 숨기고 슬롯 축소 */
+  .skills-sticky {
+    padding: 6px 10px;
+  }
+
+  .skills-sticky .section-title,
+  .skills-sticky .dnd-hint {
+    display: none;
+  }
+
+  .skills-sticky .slot-grid {
+    grid-template-columns: repeat(4, 44px);
+    gap: 6px;
+    margin-bottom: 0;
+  }
+
+  .skills-sticky .roll-row .btn.wide {
+    margin: 2px 0;
+    padding: 6px 8px;
   }
 }
 
