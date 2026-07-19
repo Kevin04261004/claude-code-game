@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// 접근 제어의 전부 (ARCHITECTURE.md §9.6) — 서버 코드가 없으므로 이 규칙이
+// 계정별 세이브 격리를 담당한다. 본인 uid 문서만 읽기/쓰기 허용.
+// 클라이언트 권위 모델이라 값 조작(치팅)은 막지 않는다 — 형태 검증만 한다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // 봉투 형태 검증 — 필드 3개 외 임의 데이터 저장(스토리지 남용) 차단
+    function isEnvelope() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['version', 'updatedAt', 'save'])
+        && d.version is int
+        && d.save is map;
+    }
+
+    // users/{uid} = { version, updatedAt, save } — 계정당 세이브 1문서
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isEnvelope();
+
+      // 충돌 해결에서 밀린 세이브 보존 (§9.3) — 실수 복구용
+      match /discarded/{epoch} {
+        allow read, write: if isOwner(userId) && isEnvelope();
+      }
+    }
+  }
+}

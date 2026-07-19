@@ -15,7 +15,8 @@ export class AuthUi {
   constructor(
     hudRoot: HTMLElement,
     private readonly auth: IAuth,
-    private readonly onSwitchedAccount: () => void,
+    /** 로그인 성공(첫 연결/기존 계정 전환) 직후 클라우드 비교·업로드를 즉시 돌린다 */
+    private readonly onSignedIn: () => void,
   ) {
     const row = el('div', 'hud-row');
     row.append(el('span', 'hud-label', '☁️ 계정'));
@@ -104,7 +105,7 @@ export class AuthUi {
             void this.auth.linkWithGoogle().then((r) => {
               hint = this.linkResultHint(r);
               rebuild();
-              if (r.kind === 'switched-account') this.onSwitchedAccount();
+              if (r.kind === 'linked' || r.kind === 'switched-account') this.onSignedIn();
             });
           }),
           button('닫기', close, 'btn secondary'),

@@ -95,7 +95,7 @@ export function attachMirror(h: CloudHandle, deps: MirrorDeps, runInitialSync: b
   window.addEventListener('online', () => void scheduler.flush());
   if (runInitialSync) void syncInGame();
 
-  /** 게임 도중의 비교(늦은 초기 비교/계정 전환) — 클라우드 채택은 로컬 교체 + 재부팅 */
+  /** 게임 도중의 비교(늦은 초기 비교/로그인 직후) — 클라우드 채택은 로컬 교체 + 재부팅 */
   async function syncInGame(): Promise<void> {
     const local = deps.currentSave();
     let remote: SaveDataV1 | null = null;
