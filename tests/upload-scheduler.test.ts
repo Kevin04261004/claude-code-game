@@ -11,12 +11,15 @@ function saveWithPlaytime(playtimeSec: number): SaveDataV1 {
   return s;
 }
 
-/** 수동 발화 fake 타이머 */
+/** 수동 발화 fake 타이머 — 예약된 지연(ms)도 기록한다 */
 function fakeTimers() {
   const pending: (() => void)[] = [];
+  const delays: number[] = [];
   return {
-    setTimer: (fn: () => void) => {
+    delays,
+    setTimer: (fn: () => void, ms: number) => {
       pending.push(fn);
+      delays.push(ms);
       return pending.length as unknown as ReturnType<typeof setTimeout>;
     },
     clearTimer: () => {
@@ -128,6 +131,47 @@ describe('UploadScheduler', () => {
     const { scheduler, uploaded } = makeScheduler();
     scheduler.notifySaved(saveWithPlaytime(10));
     await scheduler.flush();
+    expect(uploaded).toHaveLength(1);
+  });
+
+  it('notifyCritical: 긴 예약을 짧은 디바운스로 앞당긴다', async () => {
+    const { scheduler, uploaded, timers } = makeScheduler({ criticalDebounceMs: 2_000 });
+    scheduler.notifySaved(saveWithPlaytime(10));
+    expect(timers.delays.at(-1)).toBe(60_000);
+    scheduler.notifyCritical(saveWithPlaytime(11));
+    expect(timers.delays.at(-1)).toBe(2_000);
+    timers.fire();
+    await flushMicro();
+    expect(uploaded).toHaveLength(1);
+    expect(uploaded[0]!.playtimeSec).toBe(11);
+  });
+
+  it('notifyCritical: 연타는 마지막 조작 기준 1회 업로드로 합쳐진다', async () => {
+    const { scheduler, uploaded, timers } = makeScheduler({ criticalDebounceMs: 2_000 });
+    scheduler.notifyCritical(saveWithPlaytime(10));
+    scheduler.notifyCritical(saveWithPlaytime(11));
+    scheduler.notifyCritical(saveWithPlaytime(12));
+    timers.fire();
+    await flushMicro();
+    expect(uploaded).toHaveLength(1);
+    expect(uploaded[0]!.playtimeSec).toBe(12);
+  });
+
+  it('notifyCritical: playtimeSec이 같아도(같은 초의 연속 조작) dedupe를 우회해 업로드한다', async () => {
+    const { scheduler, uploaded, timers } = makeScheduler({ criticalDebounceMs: 2_000 });
+    scheduler.notifyCritical(saveWithPlaytime(10));
+    timers.fire();
+    await flushMicro();
+    scheduler.notifyCritical(saveWithPlaytime(10)); // 같은 초에 두 번째 조작
+    timers.fire();
+    await flushMicro();
+    expect(uploaded).toHaveLength(2);
+  });
+
+  it('notifyCritical: 탭 숨김이면 디바운스 없이 즉시 업로드한다', async () => {
+    const { scheduler, uploaded } = makeScheduler({ criticalDebounceMs: 2_000, isHidden: () => true });
+    scheduler.notifyCritical(saveWithPlaytime(10));
+    await flushMicro();
     expect(uploaded).toHaveLength(1);
   });
 });

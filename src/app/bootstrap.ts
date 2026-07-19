@@ -13,7 +13,7 @@ import { registerVisibility } from '../loop/visibility';
 import { CanvasRenderer } from '../render/canvas-renderer';
 import { settleOffline } from '../sim/offline/offline-settlement';
 import { Simulation } from '../sim/simulation';
-import type { CloudHandle } from '../cloud/boot';
+import type { CloudHandle, MirrorNotifier } from '../cloud/boot';
 import type { SaveDataV1 } from '../save/save-schema';
 import { fromSave, newGameState, toSave } from '../save/serializer';
 import { SaveStorage, LocalStore } from '../save/storage';
@@ -80,13 +80,18 @@ function startGame(
   // 시뮬 생성
   const bus = new EventBus();
   const sim = new Simulation(state, bus);
-  let cloudNotify: ((save: SaveDataV1) => void) | null = null; // 클라우드 미러 연결 전에는 null (§9.3)
-  const saveNow = () => {
+  let mirror: MirrorNotifier | null = null; // 클라우드 미러 연결 전에는 null (§9.3)
+  const saveNow = (critical = false) => {
     updateBestScore(state);
     const save = toSave(state, clock.now());
     storage.write(save);
-    cloudNotify?.(save);
+    if (critical) mirror?.notifyCritical(save);
+    else mirror?.notifySaved(save);
   };
+
+  // 플레이어 조작은 즉시 로컬 저장 + 짧은 디바운스 업로드 — 조작 직후 앱을 꺼도 잃지 않는다 (§9.3)
+  const PLAYER_ACTION_EVENTS = ['skillRolled', 'skillUpgraded', 'skillSold', 'skillEquipped', 'weaponUpgraded', 'weaponEquipped', 'treeNodeUnlocked'];
+  for (const t of PLAYER_ACTION_EVENTS) bus.on(t, () => saveNow(true));
 
   // 오프라인 정산 (시작 시점, §5) — 채택된 세이브의 savedAt 기준
   let startupCatchupMs = 0;
@@ -128,8 +133,8 @@ function startGame(
         currentSave: () => toSave(state, clock.now()),
         writeLocalSave: (s) => storage.write(s),
         hudRoot: document.getElementById('hud')!,
-        onUploaderReady: (notify) => {
-          cloudNotify = notify;
+        onUploaderReady: (uploader) => {
+          mirror = uploader;
         },
         reload: () => location.reload(),
       },

@@ -68,12 +68,20 @@ export async function resolveStartSave(h: CloudHandle, local: SaveDataV1 | null)
   return local;
 }
 
+/** bootstrap의 saveNow가 호출하는 미러 통지 인터페이스 */
+export interface MirrorNotifier {
+  /** 일반 저장(자동저장 등) — 긴 디바운스 */
+  notifySaved(s: SaveDataV1): void;
+  /** 플레이어 조작(스킬/무기 등) 직후 — 짧은 디바운스로 빠르게 업로드 */
+  notifyCritical(s: SaveDataV1): void;
+}
+
 export interface MirrorDeps {
   currentSave: () => SaveDataV1;
   writeLocalSave: (s: SaveDataV1) => void;
   hudRoot: HTMLElement;
-  /** 미러 준비 완료 시 로컬 저장 통지 콜백을 넘겨준다 (bootstrap의 saveNow가 호출) */
-  onUploaderReady: (notify: (s: SaveDataV1) => void) => void;
+  /** 미러 준비 완료 시 통지 인터페이스를 넘겨준다 (bootstrap의 saveNow가 호출) */
+  onUploaderReady: (uploader: MirrorNotifier) => void;
   reload: () => void;
 }
 
@@ -85,13 +93,17 @@ export function attachMirror(h: CloudHandle, deps: MirrorDeps, runInitialSync: b
   const scheduler = new UploadScheduler({
     upload: (save) => h.cloud.upload(h.uid(), save),
     debounceMs: BALANCE.CLOUD_UPLOAD_DEBOUNCE_MS,
+    criticalDebounceMs: BALANCE.CLOUD_UPLOAD_CRITICAL_DEBOUNCE_MS,
     isHidden: () => document.visibilityState === 'hidden',
   });
 
   const ui = new AuthUi(deps.hudRoot, h.auth, () => void syncInGame());
   ui.bindUploader(scheduler);
 
-  deps.onUploaderReady((save) => scheduler.notifySaved(save));
+  deps.onUploaderReady({
+    notifySaved: (save) => scheduler.notifySaved(save),
+    notifyCritical: (save) => scheduler.notifyCritical(save),
+  });
   window.addEventListener('online', () => void scheduler.flush());
   if (runInitialSync) void syncInGame();
 

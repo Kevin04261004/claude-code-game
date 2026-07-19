@@ -8,7 +8,7 @@
  */
 import type { AuthStatus } from '../app/ports';
 import type { CloudHandle } from '../cloud/boot';
-import { summarize } from '../cloud/sync';
+import { compareSaves, summarize } from '../cloud/sync';
 import type { SaveDataV1 } from '../save/save-schema';
 import { button, el, fmtDuration } from './dom';
 
@@ -26,6 +26,10 @@ export function showStartScreen(localSave: SaveDataV1 | null, cloudReady: Promis
       const s = summarize(localSave);
       inner.append(el('div', 'start-save-info', `이 기기의 세이브: Lv.${s.level} · 스테이지 ${s.stageIndex + 1} · ${fmtDuration(s.playtimeSec * 1000)}`));
     }
+    // 로그인 세션이 복원되면 클라우드 세이브를 미리 조회해 여기에 표시한다
+    const cloudInfo = el('div', 'start-save-info');
+    cloudInfo.style.display = 'none';
+    inner.append(cloudInfo);
 
     const actions = el('div', 'start-actions');
     const hint = el('div', 'start-hint', '');
@@ -45,7 +49,8 @@ export function showStartScreen(localSave: SaveDataV1 | null, cloudReady: Promis
 
     actions.append(guestBtn, googleBtn);
     inner.append(actions, hint);
-    inner.append(el('div', 'start-hint dim', '로그인하면 다른 기기에서도 이어할 수 있어요'));
+    const subHint = el('div', 'start-hint dim', '로그인하면 다른 기기에서도 이어할 수 있어요');
+    inner.append(subHint);
     screen.append(inner);
     document.body.append(screen);
 
@@ -57,12 +62,15 @@ export function showStartScreen(localSave: SaveDataV1 | null, cloudReady: Promis
       handle.auth.onStatus((s) => applyStatus(handle, s));
     });
 
+    let cloudPreviewStarted = false;
+
     function applyStatus(handle: CloudHandle, s: AuthStatus): void {
       if (s.state === 'linked') {
-        // 이미 로그인된 계정 복원 — 버튼 하나로 합친다
+        // 이미 로그인된 계정 복원 — 버튼 하나로 합치고, 클라우드 세이브를 미리 보여준다
         primaryMode = 'synced';
         guestBtn.textContent = `▶ 계속하기 (${s.user.email ?? '로그인됨'})`;
         googleBtn.style.display = 'none';
+        void showCloudPreview(handle);
         return;
       }
       if (s.state === 'guest') {
@@ -86,6 +94,36 @@ export function showStartScreen(localSave: SaveDataV1 | null, cloudReady: Promis
         googleBtn.disabled = true;
         googleBtn.textContent = s.state === 'offline' ? '오프라인 — 로그인 불가' : '로그인 불가 (연결 오류)';
       }
+    }
+
+    /** 클라우드 세이브 요약 + 계속하기 시 어느 쪽으로 이어지는지 안내 (판정은 resolveStartSave와 동일 로직) */
+    async function showCloudPreview(handle: CloudHandle): Promise<void> {
+      if (cloudPreviewStarted) return;
+      cloudPreviewStarted = true;
+      let remote: SaveDataV1 | null = null;
+      try {
+        remote = await handle.cloud.fetch(handle.uid());
+      } catch {
+        return; // 조회 실패 — 안내 생략, 시작 시 resolveStartSave가 다시 시도한다
+      }
+      if (!remote) {
+        if (localSave) subHint.textContent = '클라우드에 세이브 없음 — 계속하면 이 기기의 세이브가 올라갑니다';
+        return;
+      }
+      const c = summarize(remote);
+      cloudInfo.textContent = `☁️ 클라우드 세이브: Lv.${c.level} · 스테이지 ${c.stageIndex + 1} · ${fmtDuration(c.playtimeSec * 1000)}`;
+      cloudInfo.style.display = '';
+      subHint.textContent = previewHint(remote);
+    }
+
+    function previewHint(remote: SaveDataV1): string {
+      if (!localSave) return '계속하면 클라우드 세이브로 이어집니다';
+      const v = compareSaves(localSave, remote);
+      if (v.kind === 'use-cloud') return '클라우드가 더 앞서 있어요 — 계속하면 클라우드 세이브로 이어집니다';
+      if (v.kind === 'ask') return '두 세이브의 진행도가 서로 달라요 — 계속하면 선택 화면이 나옵니다';
+      return v.uploadNeeded
+        ? '이 기기가 더 앞서 있어요 — 계속하면 이 세이브가 클라우드에 올라갑니다'
+        : '클라우드와 같은 지점입니다 — 이어서 계속합니다';
     }
   });
 }

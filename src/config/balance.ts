@@ -11,6 +11,7 @@ export const BALANCE = {
   AUTOSAVE_INTERVAL_MS: 30_000,
   BACKUP_INTERVAL_MS: 60 * 60_000,
   CLOUD_UPLOAD_DEBOUNCE_MS: 60_000, // 로컬 저장 후 클라우드 미러 업로드까지의 디바운스 (§9.3)
+  CLOUD_UPLOAD_CRITICAL_DEBOUNCE_MS: 2_000, // 플레이어 조작(스킬 강화 등) 직후의 짧은 디바운스 — 조작 후 바로 종료해도 잃지 않게
 
   // ── 월드 ──
   ARENA_RADIUS: 340,
