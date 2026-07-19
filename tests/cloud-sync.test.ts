@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { toSave } from '../src/save/serializer';
 import type { SaveDataV1 } from '../src/save/save-schema';
-import { axesOf, compareSaves, summarize } from '../src/cloud/sync';
+import { axesOf, compareSaves, resolveInitial, summarize } from '../src/cloud/sync';
 import { makeState } from './helpers';
 
 /** 진행 축을 지정한 세이브 생성 */
@@ -59,6 +59,21 @@ describe('compareSaves', () => {
     const local = save({ playtime: 900, level: 5, stage: 2 });
     const cloud = save({ playtime: 100, level: 9, stage: 2 });
     expect(compareSaves(local, cloud)).toEqual({ kind: 'ask' });
+  });
+});
+
+describe('resolveInitial', () => {
+  it('로컬이 없고 클라우드가 있으면 클라우드 사용 (새 기기 로그인)', () => {
+    expect(resolveInitial(null, save({ level: 9 }))).toEqual({ kind: 'use-cloud' });
+  });
+
+  it('둘 다 없으면 로컬(새 게임) + 업로드 불필요', () => {
+    expect(resolveInitial(null, null)).toEqual({ kind: 'use-local', uploadNeeded: false });
+  });
+
+  it('로컬이 있으면 compareSaves로 위임한다', () => {
+    const local = save({ playtime: 200, level: 6, stage: 3 });
+    expect(resolveInitial(local, null)).toEqual({ kind: 'use-local', uploadNeeded: true });
   });
 });
 

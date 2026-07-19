@@ -40,6 +40,12 @@ export function summarize(s: SaveDataV1): SaveSummary {
   return { ...a, savedAt: s.savedAt };
 }
 
+/** 시작 시점 판정 — 로컬 세이브가 아예 없으면(새 기기/스토리지 삭제) 클라우드를 그대로 쓴다 */
+export function resolveInitial(local: SaveDataV1 | null, cloud: SaveDataV1 | null): SyncVerdict {
+  if (!local) return cloud ? { kind: 'use-cloud' } : { kind: 'use-local', uploadNeeded: false };
+  return compareSaves(local, cloud);
+}
+
 export function compareSaves(local: SaveDataV1, cloud: SaveDataV1 | null): SyncVerdict {
   if (cloud === null) return { kind: 'use-local', uploadNeeded: true };
 
