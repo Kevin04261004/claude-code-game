@@ -424,3 +424,121 @@ export interface SaveDataV1 {
 - **Web Worker로 시뮬 이전**: `sim/`이 이미 헤드리스이므로 포스트-MVP에 메시지 채널만 얹으면 됨.
 - **서버 리더보드**: `ILeaderboard`의 `remote-provider.ts` 구현 + 결정론 시뮬 덕에 서버 측 점수 재현 검증 가능.
 - **PixiJS 렌더러**: `IRenderer` 구현체 추가로 교체.
+- **계정/클라우드 저장/광고/모바일 앱**: §9의 확정 스택을 따른다.
+
+---
+
+## 9. 계정·클라우드 저장·광고·모바일 앱: 확정 기술 스택
+
+> 목표: ① 로그인하면 다른 기기/IP에서도 같은 세이브로 플레이 ② 추후 광고 수익화 ③ 추후 모바일 앱(스토어) 출시.
+> 원칙은 기존과 동일 — **작은 모듈, 인터페이스 뒤에 구현체, sim은 아무것도 모른다.**
+
+### 9.1 스택 선택 요약
+
+| 영역 | 선택 | 핵심 이유 |
+|---|---|---|
+| 인증 | **Firebase Authentication** (익명 → Google 계정 연결) | 게스트 즉시 플레이 유지 + `linkWithCredential`로 진행 손실 없이 계정 전환. Capacitor 공식 지원 |
+| 클라우드 저장 | **Cloud Firestore** (`users/{uid}` 문서 1개) | 세이브가 이미 직렬화 가능한 JSON(§6) — 문서 하나로 끝. 보안 규칙으로 서버 코드 없이 계정별 접근 제어 |
+| 서버 코드 | **없음 (당분간)** | Firestore 보안 규칙만으로 충분. 서버 검증이 필요해지면 Cloud Functions 추가 (결정론 시뮬 덕에 점수 재현 검증 가능, §3.3) |
+| 웹 호스팅 | **GitHub Pages 유지** | Firebase SDK는 전부 클라이언트 사이드 — 현 배포 파이프라인 그대로 |
+| 모바일 앱 | **Capacitor** | 현재 웹 코드베이스(Canvas+DOM)를 그대로 네이티브 셸에 탑재. iOS/Android 동시 출시, 웹과 단일 코드 유지 |
+| 광고 | **AdMob** (`@capacitor-community/admob`) — 보상형 중심 | 방치형과 궁합이 좋은 보상형 광고(오프라인 보상 부스트 등). Google 생태계라 Firebase와 계정/분석 통합 용이 |
+| 결제(장기) | RevenueCat 또는 스토어 IAP 직접 | `gems` 필드(§6)가 이미 스키마에 존재. 광고 제거 상품부터 |
+
+**대안을 배제한 이유**
+
+- **Supabase**: 훌륭하지만 이 게임엔 관계형 DB가 필요 없고(세이브 = 문서 1개), AdMob·Capacitor·모바일 푸시까지 가면 Google 생태계 통합이 더 싸다.
+- **자체 서버(Node 등)**: 운영 비용·보안·스케일링을 떠안는 대가가 "문서 1개 저장"에 비해 너무 크다. 서버가 정말 필요한 순간(치팅 검증, 실시간 리더보드)에 Cloud Functions로 점진 도입.
+- **비용**: Firebase 무료 티어(Spark)는 Firestore 일일 읽기 5만/쓰기 2만 — 세이브 업로드를 디바운스(§9.3)하면 수천 DAU까지 무료 범위.
+
+### 9.2 인증 설계 — "게스트 우선, 로그인은 업그레이드"
+
+```
+첫 방문 ──→ 익명 로그인(자동, UI 없음) ──→ uid 발급, 즉시 플레이
+                    │
+                    └─ [설정/저장 패널] "Google로 로그인"
+                            │
+                            ├─ 익명 계정에 Google 자격 증명 연결(linkWithCredential)
+                            │   → uid 유지, 진행 그대로, 이후 어느 기기서든 같은 세이브
+                            │
+                            └─ 이미 다른 기기에 계정 세이브가 있으면 → 충돌 해결 (§9.3)
+```
+
+- 로그인 강제 금지 — 게스트로 끝까지 플레이 가능. 로그인의 가치는 "기기 간 동기화"라고 UI에 명시.
+- 로그아웃/탈퇴 시에도 localStorage 세이브는 보존 (로컬이 항상 1차 소스, §9.3).
+- 이메일/비밀번호 방식은 만들지 않는다 — 관리 비용(재설정, 탈취) 대비 이득 없음. 소셜 로그인은 Google로 시작, 앱 출시 시점에 Apple 추가(iOS 심사 요구사항: 소셜 로그인 제공 시 Apple 로그인 필수).
+
+### 9.3 클라우드 저장 설계 — 로컬 우선, 클라우드는 미러
+
+**원칙: localStorage가 항상 진실의 원천(오프라인 우선). 클라우드는 "다른 기기로 옮겨 타기 위한" 미러다.**
+
+```
+저장:  30초 주기/탭 숨김 → localStorage (기존 그대로)
+                              └─ 디바운스(예: 60초) + savedAt 변경 시에만 → Firestore 업로드
+로드:  localStorage 로드 (기존 체인, §6) → 로그인 상태면 Firestore 문서와 비교
+        ├─ 클라우드가 더 최신 & 로컬과 다른 기기 → 충돌 해결
+        └─ 로컬이 더 최신 → 클라우드 갱신
+```
+
+**충돌 해결 규칙** (다른 기기에서 이어 하기의 핵심):
+
+1. `savedAt`·`playtimeSec`·최고 스테이지를 비교해 **명백히 앞선 쪽이 있으면 자동 채택** (예: 플레이타임과 스테이지 모두 우위).
+2. 애매하면(각자 다른 축이 앞섬) **유저에게 양쪽 요약(레벨/스테이지/플레이타임/저장 시각)을 보여주고 선택**시킨다 — 병합은 하지 않는다(스킬 인벤토리 병합은 복제 악용 통로).
+3. 선택되지 않은 쪽은 Firestore에 `users/{uid}/discarded/{epoch}`로 1개 보존 (실수 복구용).
+
+- 업로드 문서는 **SaveData 그대로** (파생값 없음 원칙 덕에 스키마 재사용, 마이그레이션 체인 §6도 로드 시 동일 적용).
+- Firestore 보안 규칙: `request.auth.uid == userId` 문서만 읽기/쓰기 허용 + 문서 크기·필드 타입 검증. 클라이언트 권위 모델이므로 치팅은 막지 못한다 — 경쟁 요소(리더보드)가 서버화되는 시점에 결정론 재현 검증(§3.3)으로 대응.
+- Firebase 설정값(apiKey 등)은 공개되어도 안전한 클라이언트 식별자 — 보안은 전적으로 규칙이 담당. Vite `.env`로 주입.
+
+### 9.4 광고 설계 (추후) — 보상형 중심, 포트 뒤에 격리
+
+- **`IAds` 포트** (`app/ports.ts`): `isAvailable()`, `showRewarded(placement): Promise<AdResult>` 정도의 좁은 인터페이스.
+- 구현체 3개로 세분화: `ads/admob-provider.ts`(Capacitor 네이티브), `ads/web-provider.ts`(웹 H5 광고 — 필요 시), `ads/noop-provider.ts`(광고 없는 빌드/개발용). 부트스트랩이 플랫폼 감지로 주입.
+- **보상 지급은 반드시 sim 명령 객체로** (`sim.execute({ type: 'claimAdBonus', ... })`) — sim은 광고의 존재를 모르고, 보상 수치는 `balance.ts`에 상수로.
+- 배치(placement) 후보: 오프라인 정산 보상 ×2, 스킬 추첨 1회 무료, 일시 골드 부스트. 전면 광고(interstitial)는 방치형 리텐션을 해치므로 배제, 배너는 전투 화면 미학을 해치므로 최후 수단.
+- 광고 제거 IAP를 처음부터 상정 → `IAds`에 `disabled` 상태 포함.
+
+### 9.5 모바일 앱 (Capacitor)
+
+- 웹 빌드(`dist/`)를 그대로 네이티브 WebView 셸에 탑재 — 렌더러/UI/시뮬 코드 변경 없음.
+- **플랫폼 어댑터만 추가**: `platform/` 모듈이 "웹이냐 앱이냐"를 감지해 포트 구현체를 갈아끼운다.
+  - 생명주기: `visibilitychange`(웹) ↔ Capacitor `App.appStateChange`(앱) → 기존 `loop/visibility.ts`가 소비하는 단일 이벤트로 정규화.
+  - 세이브: localStorage(웹) ↔ Capacitor `Preferences`(앱 — WebView storage는 OS가 지울 수 있어 더 안전한 네이티브 저장소 사용). `IStorage` 구현체 교체로 끝.
+  - 안전 영역(`safe-area-inset`)·터치 대응은 이미 완료(§UI) — 그대로 동작.
+- 스토어 출시 체크리스트(추후): 앱 아이콘/스플래시, Apple 로그인 추가(§9.2), 개인정보처리방침 URL(광고 SDK 필수), Android 타겟 SDK 버전 유지.
+
+### 9.6 모듈 구조 (신규 폴더 — 세분화 원칙 유지)
+
+```
+src/
+├─ app/ports.ts        # 기존 + IAuth, ICloudSave, IAds, IPlatform 인터페이스 추가
+├─ auth/
+│  ├─ auth-service.ts  # IAuth 구현: 익명 로그인, Google 연결, 상태 구독
+│  └─ auth-ui.ts       # 로그인 버튼/상태 표시 (설정 패널에 삽입)
+├─ cloud/
+│  ├─ cloud-save.ts    # ICloudSave 구현: 디바운스 업로드, 문서 읽기
+│  ├─ sync.ts          # 로컬↔클라우드 비교·충돌 판정 (순수 로직 — 유닛 테스트 대상)
+│  └─ conflict-ui.ts   # 충돌 시 양쪽 세이브 요약/선택 모달
+├─ ads/                # (추후) §9.4의 구현체 3개
+├─ platform/
+│  └─ detect.ts        # 웹/Capacitor 감지 → bootstrap에서 구현체 선택
+└─ firebase/
+   └─ client.ts        # Firebase 초기화 단 한 곳 (SDK import를 여기로 격리)
+```
+
+- **sim/·save/serializer·migrations는 단 한 줄도 바뀌지 않는다** — 클라우드 저장은 `storage.ts` 바깥에서 SaveData를 미러링할 뿐.
+- `sync.ts`의 충돌 판정은 순수 함수로 분리해 Vitest로 검증 (네트워크 목킹 불필요).
+- Firebase SDK는 `firebase/client.ts`에서만 import — 웹팩 트리셰이킹 + 추후 교체 비용 최소화.
+
+### 9.7 도입 로드맵 (작은 단계로 나눠 각각 검증·배포)
+
+| 단계 | 내용 | 배포 가능 상태 |
+|---|---|---|
+| 1 | Firebase 프로젝트 생성, `firebase/client.ts` + 익명 인증 | 유저 변화 없음 (내부 준비) |
+| 2 | `cloud/` 미러 업로드 + 로드 시 비교, 충돌 해결 UI | **게스트도 기기 복원 가능** (같은 브라우저) |
+| 3 | Google 로그인 + 계정 연결 UI | **★ 목표 달성: 다른 기기/IP에서 이어 하기** |
+| 4 | Capacitor 셸 + `platform/` 어댑터 | 앱 내부 테스트 빌드 |
+| 5 | AdMob 보상형 + `IAds` | 수익화 시작 |
+| 6 | Apple 로그인, IAP(광고 제거), 스토어 출시 | 정식 출시 |
+
+각 단계는 독립적으로 머지·배포 가능해야 하며(작은 모듈 원칙), 단계 2·3의 `sync.ts` 충돌 로직과 저장 왕복은 유닛 테스트를 먼저 작성한다.
