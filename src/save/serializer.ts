@@ -4,8 +4,9 @@
  */
 import { BALANCE } from '../config/balance';
 import { Rng } from '../core/rng';
+import { LEGACY_WEAPON_IDS, WEAPONS } from '../content/weapons';
 import { maxHpFor } from '../sim/progression/growth';
-import type { SimState } from '../sim/state';
+import type { SimState, WeaponSlot } from '../sim/state';
 import { SAVE_VERSION, stageIdOf, stageIndexOf, type SaveDataV1 } from './save-schema';
 
 const RIVAL_NAMES = [
@@ -63,7 +64,7 @@ export function fromSave(save: SaveDataV1): SimState {
       hp: maxHpFor(level), // 파생값 재계산 — 로드 시 풀피로 재시작
       maxHp: maxHpFor(level),
     },
-    weapons: save.weapons.map((w) => ({ ...w })),
+    weapons: normalizeWeapons(save.weapons),
     skills: {
       owned: save.skills.owned.map((s) => ({ ...s })),
       equipped: normalizeSlots(save.skills.equipped),
@@ -96,6 +97,29 @@ export function fromSave(save: SaveDataV1): SimState {
   };
 }
 
+/**
+ * 세이브의 무기 목록 → 현재 무기 로스터로 정규화 (로드 시 항상 적용).
+ * 구 판타지 무기는 SF 무기로 이전(레벨/장착 유지), 알 수 없는 id는 버리고,
+ * 새로 추가된 무기는 1레벨로 채운다 — 스키마 버전 없이 무기 추가가 가능해진다.
+ */
+function normalizeWeapons(saved: Array<{ weaponId: string; level: number; equipped: boolean }>): WeaponSlot[] {
+  const byId = new Map<string, WeaponSlot>();
+  for (const w of saved) {
+    const id = LEGACY_WEAPON_IDS[w.weaponId] ?? w.weaponId;
+    if (!WEAPONS[id]) continue;
+    const prev = byId.get(id);
+    if (!prev || w.level > prev.level) {
+      byId.set(id, { weaponId: id, level: w.level, equipped: (prev?.equipped ?? false) || w.equipped });
+    }
+  }
+  const out: WeaponSlot[] = [];
+  for (const id of Object.keys(WEAPONS)) {
+    out.push(byId.get(id) ?? { weaponId: id, level: 1, equipped: false });
+  }
+  if (!out.some((w) => w.equipped) && out[0]) out[0].equipped = true;
+  return out;
+}
+
 function normalizeSlots(slots: (string | null)[]): (string | null)[] {
   const out: (string | null)[] = [];
   for (let i = 0; i < BALANCE.SKILL_SLOTS; i++) out.push(slots[i] ?? null);
@@ -123,10 +147,7 @@ export function newGameState(seed: number, now: number): SimState {
       hp: maxHpFor(1),
       maxHp: maxHpFor(1),
     },
-    weapons: [
-      { weaponId: 'blade', level: 1, equipped: true },
-      { weaponId: 'wand', level: 1, equipped: false },
-    ],
+    weapons: Object.keys(WEAPONS).map((id, i) => ({ weaponId: id, level: 1, equipped: i === 0 })),
     skills: {
       owned: [],
       equipped: normalizeSlots([]),

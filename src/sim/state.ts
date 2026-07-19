@@ -62,6 +62,9 @@ export interface Projectile {
   status: StatusSpec | null;
   lifestealPct: number;
   explodePct: number;
+  /** 착탄 폭발(shell): 직격 지점 주변 aoeRadius 내 적에게 damage×aoePct (0이면 없음) */
+  aoePct: number;
+  aoeRadius: number;
   canCrit: boolean;
   tint: string | null;
   /** 렌더 스타일 키: 'weapon' 또는 스킬 기본형 id — 외형 결정 (렌더 전용) */

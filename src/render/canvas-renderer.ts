@@ -14,7 +14,7 @@ import { EffectsLayer } from './effects';
 import { drawAuras, drawOrbits, drawProjectiles } from './skill-visuals';
 import { projectileSprite, shipSprite, spaceEnemySprite } from './sprite-cache';
 import { Starfield } from './starfield';
-import { drawWeapon } from './weapon-visuals';
+import { drawBeamFx, drawSweepFx, drawWeapon } from './weapon-visuals';
 
 export class CanvasRenderer implements IRenderer {
   private readonly ctx: CanvasRenderingContext2D;
@@ -73,6 +73,7 @@ export class CanvasRenderer implements IRenderer {
     drawProjectiles(ctx, cam, state, alpha);
     this.drawEnemyBullets(state, alpha);
     drawOrbits(ctx, cam, state, this.sim.equippedInstances());
+    this.drawWeaponFx(state, alpha, now);
     this.drawPlayer(state, now);
 
     this.effects.update(dt);
@@ -122,6 +123,51 @@ export class CanvasRenderer implements IRenderer {
     }
   }
 
+  /** 장착 무기의 전투 이펙트 — 광자 빔(대상 연결)·회전 광선(활성 회전) */
+  private drawWeaponFx(state: SimState, alpha: number, now: number): void {
+    const slot = state.weapons.find((w) => w.equipped) ?? state.weapons[0];
+    const def = slot ? WEAPONS[slot.weaponId] : undefined;
+    if (!def) return;
+    const cam = this.cam;
+
+    if (def.behavior === 'beam') {
+      // sim의 판정과 같은 대상(가장 가까운 적, 사거리 내) — 보간 위치로 그린다
+      let best: { x: number; y: number; r: number } | null = null;
+      let bestD = Infinity;
+      for (const e of state.enemies) {
+        const d = e.x * e.x + e.y * e.y;
+        if (d < bestD) {
+          bestD = d;
+          best = { x: e.px + (e.x - e.px) * alpha, y: e.py + (e.y - e.py) * alpha, r: e.radius };
+        }
+      }
+      if (!best) return;
+      const rr = BALANCE.BEAM_RANGE + best.r;
+      if (bestD > rr * rr) return;
+      const aim = Math.atan2(best.y, best.x);
+      const muzzle = cam.r(BALANCE.PLAYER_RADIUS) * 1.6;
+      drawBeamFx(
+        this.ctx,
+        cam.x(0) + Math.cos(aim) * muzzle,
+        cam.y(0) + Math.sin(aim) * muzzle,
+        cam.x(best.x),
+        cam.y(best.y),
+        def.tint,
+        cam.scale,
+        now,
+      );
+    }
+
+    if (def.behavior === 'sweep') {
+      const active = state.cooldowns['weaponSweep'] ?? 0;
+      if (active <= 0) return;
+      // sim의 부채꼴 진행(weapon-fire.ts)과 같은 공식 + alpha 보간으로 부드럽게
+      const done = BALANCE.SWEEP_DURATION_TICKS - active;
+      const angle = ((done + alpha) * Math.PI * 2) / BALANCE.SWEEP_DURATION_TICKS;
+      drawSweepFx(this.ctx, cam.x(0), cam.y(0), cam.r(BALANCE.SWEEP_RADIUS), angle, def.tint, cam.scale);
+    }
+  }
+
   private drawPlayer(state: SimState, now: number): void {
     const ctx = this.ctx;
     const cam = this.cam;
@@ -168,13 +214,13 @@ export class CanvasRenderer implements IRenderer {
     ctx.drawImage(ship, -ship.width / 2, -ship.height / 2);
     ctx.restore();
 
-    // 무기 — 강화 티어에 따라 외형 변경, 조준 방향에 그린다
+    // 무기 — 강화 티어에 따라 외형 변경, 조준 방향에 그린다 (behavior별 형태)
     const slot = state.weapons.find((w) => w.equipped) ?? state.weapons[0];
     if (slot) {
       const def = WEAPONS[slot.weaponId];
       if (def) {
         const tierKey = def.tiers[weaponTier(def, slot.level)] ?? def.tiers[0]!;
-        drawWeapon(ctx, px, py, this.aimAngle, tierKey, cam.scale);
+        drawWeapon(ctx, px, py, this.aimAngle, tierKey, cam.scale, def.behavior);
       }
     }
 

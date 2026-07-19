@@ -51,6 +51,29 @@ export function weaponTier(def: WeaponDef, level: number): number {
   return Math.min(def.tiers.length - 1, Math.floor((level - 1) / BALANCE.WEAPON_TIER_LEVELS));
 }
 
+// ── 무기 행동별 파생 수치 — sim(weapon-fire)과 패널 표시가 공유하는 유일한 출처 ──
+
+/** beam: 피해 적용 1회당 데미지 (BEAM_HIT_PERIOD_TICKS마다 적용) */
+export function beamTickDamage(def: WeaponDef, level: number): number {
+  return weaponDamage(def, level) * BALANCE.BEAM_TICK_DMG_MULT;
+}
+
+/** sweep: 회전 1회가 적 하나에게 주는 데미지 */
+export function sweepDamage(def: WeaponDef, level: number): number {
+  return weaponDamage(def, level) * BALANCE.SWEEP_DMG_MULT;
+}
+
+/** sweep: 회전이 끝난 뒤 다음 회전까지의 대기 틱 — 레벨이 오르면 짧아진다 */
+export function sweepIntervalTicks(def: WeaponDef, level: number): number {
+  const reduced = def.cooldownTicks - Math.floor((level - 1) / BALANCE.SWEEP_INTERVAL_REDUCE_LEVELS);
+  return Math.max(BALANCE.SWEEP_MIN_INTERVAL_TICKS, reduced);
+}
+
+/** sweep: 회전 시작→다음 회전 시작까지의 전체 주기(초) — 패널 표시용 */
+export function sweepPeriodSec(def: WeaponDef, level: number): number {
+  return (sweepIntervalTicks(def, level) + BALANCE.SWEEP_DURATION_TICKS) / BALANCE.TPS;
+}
+
 // ── 스킬 비용 ──
 
 export function skillRollCost(rollCount: number): number {

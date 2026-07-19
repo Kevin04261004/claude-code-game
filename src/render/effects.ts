@@ -14,6 +14,8 @@ interface FloatingText {
 }
 
 interface Ring {
+  x: number; // 월드 좌표 중심 (nova는 플레이어 중심 0,0)
+  y: number;
   radius: number;
   color: string;
   ageMs: number;
@@ -39,10 +41,16 @@ export class EffectsLayer {
       });
     });
     bus.on('nova', (e) => {
-      this.rings.push({ radius: e['radius'] as number, color: (e['tint'] as string) ?? '#ffffff', ageMs: 0 });
+      this.rings.push({ x: 0, y: 0, radius: e['radius'] as number, color: (e['tint'] as string) ?? '#ffffff', ageMs: 0 });
     });
     bus.on('explosion', (e) => {
-      this.rings.push({ radius: e['radius'] as number, color: '#ff9a5a', ageMs: 0 });
+      this.rings.push({
+        x: (e['x'] as number) ?? 0,
+        y: (e['y'] as number) ?? 0,
+        radius: e['radius'] as number,
+        color: '#ff9a5a',
+        ageMs: 0,
+      });
     });
   }
 
@@ -56,11 +64,20 @@ export class EffectsLayer {
   draw(ctx: CanvasRenderingContext2D, cam: Camera): void {
     for (const r of this.rings) {
       const p = r.ageMs / RING_LIFE_MS;
+      const cx = cam.x(r.x);
+      const cy = cam.y(r.y);
+      const rad = cam.r(r.radius * (0.5 + 0.5 * p));
+      // 확장 링 + 안쪽 발광 채움 (사라지며 옅어짐)
+      ctx.globalAlpha = (1 - p) * 0.25;
+      ctx.fillStyle = r.color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.fill();
       ctx.globalAlpha = 1 - p;
       ctx.strokeStyle = r.color;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(cam.x(0), cam.y(0), cam.r(r.radius * (0.5 + 0.5 * p)), 0, Math.PI * 2);
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.globalAlpha = 1;

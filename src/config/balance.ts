@@ -52,6 +52,18 @@ export const BALANCE = {
   WEAPON_COST_GROWTH: 1.17,
   WEAPON_TIER_LEVELS: 10, // n레벨마다 외형 티어 1 상승
 
+  // ── 무기 행동별 (content/weapons.ts behavior) ──
+  CANNON_AOE_RADIUS: 60, // shell: 착탄 폭발 반경
+  CANNON_AOE_PCT: 0.5, // shell: 폭발 피해 = 직격의 50%
+  BEAM_RANGE: 240, // beam: 연결 사거리
+  BEAM_HIT_PERIOD_TICKS: 2, // beam: 피해 적용 주기 (초당 5회)
+  BEAM_TICK_DMG_MULT: 0.2, // beam: 1회 피해 = weaponDamage × 0.2 (크리 없음 — 지속형)
+  SWEEP_RADIUS: 200, // sweep: 회전 광선 반경
+  SWEEP_DURATION_TICKS: 6, // sweep: 1회전에 걸리는 틱 (0.6초 — 빠른 회전)
+  SWEEP_DMG_MULT: 4, // sweep: 회전당 피해 = weaponDamage × 4
+  SWEEP_MIN_INTERVAL_TICKS: 12, // sweep: 주기 하한 (1.2초)
+  SWEEP_INTERVAL_REDUCE_LEVELS: 2, // sweep: 2레벨마다 주기 1틱 감소
+
   // ── 스킬 ──
   SKILL_SLOTS: 4,
   SKILL_LEVEL_DMG_GROWTH: 1.1,

@@ -22,7 +22,7 @@ describe('성장 곡선', () => {
   });
 
   it('무기 강화 비용/데미지는 단조 증가', () => {
-    const def = WEAPONS['blade']!;
+    const def = WEAPONS['laser']!;
     for (let lv = 1; lv < 100; lv++) {
       expect(weaponUpgradeCost(def, lv + 1)).toBeGreaterThan(weaponUpgradeCost(def, lv));
       expect(weaponDamage(def, lv + 1)).toBeGreaterThan(weaponDamage(def, lv));
@@ -67,7 +67,7 @@ describe('grantExp', () => {
 
 describe('weaponTier', () => {
   it('10레벨마다 티어 상승, 최종 티어에서 고정', () => {
-    const def = WEAPONS['blade']!;
+    const def = WEAPONS['laser']!;
     expect(weaponTier(def, 1)).toBe(0);
     expect(weaponTier(def, 10)).toBe(0);
     expect(weaponTier(def, 11)).toBe(1);

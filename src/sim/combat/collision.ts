@@ -106,6 +106,23 @@ export function resolveProjectiles(state: SimState, grid: SpatialGrid, ctx: Comb
         explodePct: p.explodePct,
         canCrit: p.canCrit,
       });
+      // 착탄 폭발 (shell 무기) — 직격 지점 주변 광역, 폭발은 크리 없음
+      if (p.aoeRadius > 0 && p.aoePct > 0) {
+        for (const other of grid.query(e.x, e.y, p.aoeRadius)) {
+          if (other.hp <= 0 || other.id === e.id) continue;
+          const rr = p.aoeRadius + other.radius;
+          if (dist2(e.x, e.y, other.x, other.y) <= rr * rr) {
+            applyHit(state, ctx, other, {
+              damage: p.damage * p.aoePct,
+              status: null,
+              lifestealPct: 0,
+              explodePct: 0,
+              canCrit: false,
+            });
+          }
+        }
+        ctx.bus.emit('cosmetic', { type: 'explosion', x: e.x, y: e.y, radius: p.aoeRadius });
+      }
       if (p.pierceLeft <= 0) {
         p.dead = true;
         break;

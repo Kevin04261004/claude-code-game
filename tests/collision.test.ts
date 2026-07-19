@@ -20,6 +20,8 @@ function makeProjectile(id: number, px: number, py: number, x: number, y: number
     status: null,
     lifestealPct: 0,
     explodePct: 0,
+    aoePct: 0,
+    aoeRadius: 0,
     canCrit: false,
     tint: null,
     styleKey: null,

@@ -13,15 +13,14 @@ import type { CombatCtx } from './combat/damage';
 import { tickMovement } from './combat/movement';
 import { tickSpawner } from './combat/spawner';
 import { tickStatuses } from './combat/status-effects';
-import { nearestEnemy } from './combat/targeting';
+import { tickWeapon } from './combat/weapon-fire';
 import { checkStageClear } from './progression/growth';
-import { weaponDamage } from './progression/growth';
 import { skillRollCost, skillSellPrice, skillUpgradeCost } from './progression/growth';
 import { treeBonuses, unlockTreeNode } from './progression/skill-tree';
-import { equipWeapon, equippedWeapon, upgradeWeapon } from './progression/weapon-upgrade';
+import { equipWeapon, upgradeWeapon } from './progression/weapon-upgrade';
 import { decodeSkillId, encodeSkillId, rollSkillCombo } from './skills/skill-catalog';
 import { composeSkill, type SkillInstance } from './skills/skill-composer';
-import { spawnProjectile, tickSkills } from './skills/skill-resolver';
+import { tickSkills } from './skills/skill-resolver';
 import type { SimState } from './state';
 
 export type SimCommand =
@@ -78,7 +77,7 @@ export class Simulation {
     this.grid.build(s.enemies);
     resolveProjectiles(s, this.grid, ctx);
     s.orbitAngle = (s.orbitAngle + BALANCE.ORBIT_SPIN_PER_TICK) % TWO_PI;
-    this.fireWeapon(s);
+    tickWeapon(s, this.grid, ctx);
     tickSkills(s, this.equippedInstances(), this.grid, ctx);
     tickStatuses(s, ctx);
 
@@ -91,35 +90,6 @@ export class Simulation {
     this.checkDeath(s);
 
     s.rngState = this.rng.state; // 클론/세이브가 언제나 현재 난수 상태를 갖도록
-  }
-
-  private fireWeapon(s: SimState): void {
-    const eq = equippedWeapon(s);
-    if (!eq) return;
-    const left = s.cooldowns['weapon'] ?? 0;
-    if (left > 0) {
-      s.cooldowns['weapon'] = left - 1;
-      return;
-    }
-    const target = nearestEnemy(s);
-    if (!target) return;
-    const d = Math.sqrt(target.x * target.x + target.y * target.y);
-    spawnProjectile(s, {
-      damage: weaponDamage(eq.def, eq.slot.level),
-      dirX: target.x / d,
-      dirY: target.y / d,
-      speed: eq.def.projectileSpeed,
-      radius: eq.def.projectileRadius,
-      pierce: 0,
-      status: null,
-      lifestealPct: 0,
-      explodePct: 0,
-      canCrit: true,
-      tint: null,
-      styleKey: 'weapon',
-      gradeIndex: 0,
-    });
-    s.cooldowns['weapon'] = eq.def.cooldownTicks;
   }
 
   private checkDeath(s: SimState): void {

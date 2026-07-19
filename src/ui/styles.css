@@ -269,6 +269,18 @@ body {
   color: #6a6e80;
 }
 
+/* 무기 카드 — 행동 유형 뱃지 + 수치 라인 */
+.weapon-badge {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.card-sub.weapon-stat {
+  color: #aab2cc;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
 .card-actions {
   display: flex;
   gap: 6px;

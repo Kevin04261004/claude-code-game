@@ -22,6 +22,9 @@ export interface ProjectileSpec {
   status: StatusSpec | null;
   lifestealPct: number;
   explodePct: number;
+  /** 착탄 폭발(shell 무기) — 생략 시 없음 */
+  aoePct?: number;
+  aoeRadius?: number;
   canCrit: boolean;
   tint: string | null;
   styleKey: string | null;
@@ -53,6 +56,8 @@ export function spawnProjectile(state: SimState, spec: ProjectileSpec): void {
     status: spec.status,
     lifestealPct: spec.lifestealPct,
     explodePct: spec.explodePct,
+    aoePct: spec.aoePct ?? 0,
+    aoeRadius: spec.aoeRadius ?? 0,
     canCrit: spec.canCrit,
     tint: spec.tint,
     styleKey: spec.styleKey,
