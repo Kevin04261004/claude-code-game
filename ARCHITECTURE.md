@@ -1,7 +1,17 @@
-# ARCHITECTURE.md — 방치형 자동전투 성장 게임
+# ARCHITECTURE.md — AFK Meteor (방치형 자동전투 성장 게임)
 
 > 브라우저 탭에 띄워두고 방치하는 게임. 뱀파이어 서바이버즈식 자동 전투 + 방치형 성장.
 > 유저 개입은 "세팅"(무기 강화, 스킬 트리, 빌드 구성)에 집중된다.
+
+**게임 명: AFK Meteor** — *AFK*(자리 비움 = 방치형 장르 관례어) + *Meteor*(게임의 상징 적인 메테오). 동명 게임 없음(2026-07 검색 확인).
+
+| 용도 | 표기 |
+|---|---|
+| 노출 명 (스토어/타이틀) | `AFK Meteor` |
+| 저장소/npm 패키지 | `afk-meteor` |
+| Firebase 프로젝트 ID | `afk-meteor` (선점 시 `afk-meteor-game`) |
+| 앱 패키지/번들 ID | `io.github.kevin04261004.afkmeteor` (도메인 확보 시 `com.<도메인>.afkmeteor`로 교체) |
+| localStorage 키 | **기존 `idle-game:*` 유지** — 키를 바꾸면 기존 플레이어 세이브가 유실된다. 브랜딩과 무관한 내부 식별자이므로 변경하지 않는다 |
 
 ---
 
