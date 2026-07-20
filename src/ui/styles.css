@@ -551,6 +551,12 @@ body {
   font-weight: 600;
 }
 
+.lb-note {
+  padding: 6px 10px;
+  color: #8a90a8;
+  font-size: 13px;
+}
+
 /* ── 모달 ── */
 .modal-overlay {
   position: fixed;

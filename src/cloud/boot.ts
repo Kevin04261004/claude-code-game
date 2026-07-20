@@ -8,11 +8,13 @@
  *  2) resolveStartSave()  — 게임 시작 전: 클라우드 비교·채택 (시작 전이라 reload 불필요)
  *  3) attachMirror()      — 게임 중: 계정 UI + 디바운스 미러 업로드
  */
+import type { IGlobalLeaderboard } from '../app/ports';
 import type { SaveDataV1 } from '../save/save-schema';
 import { AuthService } from '../auth/auth-service';
 import { AuthUi } from '../auth/auth-ui';
 import { BALANCE } from '../config/balance';
-import { FirestoreCloudSave, getFirebaseSdk, getNicknameStore } from '../firebase/client';
+import { FirestoreCloudSave, getFirebaseSdk, getLeaderboardStore, getNicknameStore } from '../firebase/client';
+import { GlobalLeaderboard } from '../leaderboard/global-provider';
 import { NicknameService } from '../profile/nickname-service';
 import { UploadScheduler } from './cloud-save';
 import { showConflictModal } from './conflict-ui';
@@ -83,6 +85,8 @@ export interface MirrorDeps {
   hudRoot: HTMLElement;
   /** 미러 준비 완료 시 통지 인터페이스를 넘겨준다 (bootstrap의 saveNow가 호출) */
   onUploaderReady: (uploader: MirrorNotifier) => void;
+  /** 글로벌 랭킹 소스 준비 완료 — 랭킹 패널이 붙이고, saveNow가 점수를 게시한다 */
+  onLeaderboardReady?: (global: IGlobalLeaderboard) => void;
   reload: () => void;
 }
 
@@ -105,6 +109,9 @@ export function attachMirror(h: CloudHandle, deps: MirrorDeps, runInitialSync: b
   });
   ui.bindUploader(scheduler);
   void nickname.load();
+
+  const global = new GlobalLeaderboard(getLeaderboardStore(), h.uid, () => nickname.current());
+  deps.onLeaderboardReady?.(global);
 
   deps.onUploaderReady({
     notifySaved: (save) => scheduler.notifySaved(save),

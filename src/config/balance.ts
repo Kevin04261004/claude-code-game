@@ -113,4 +113,6 @@ export const BALANCE = {
   SCORE_PER_KILL: 1,
   RIVAL_COUNT: 9,
   RIVAL_SCORE_PER_HOUR: 130,
+  LEADERBOARD_TOP_N: 20, // 글로벌 랭킹에 표시할 상위 인원
+  LEADERBOARD_PUBLISH_MIN_MS: 60_000, // 점수 게시 최소 간격 — Firestore 쓰기 할당량 보호
 } as const;

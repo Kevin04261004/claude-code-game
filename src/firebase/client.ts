@@ -18,7 +18,20 @@ import {
   type Auth,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc, getFirestore, runTransaction, serverTimestamp, setDoc, type Firestore } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  getFirestore,
+  limit as fbLimit,
+  orderBy,
+  query,
+  runTransaction,
+  serverTimestamp,
+  setDoc,
+  type Firestore,
+} from 'firebase/firestore';
 import type { AuthUser, ICloudSave } from '../app/ports';
 import { migrate } from '../save/migrations';
 import type { SaveDataV1 } from '../save/save-schema';
@@ -46,6 +59,20 @@ export interface NicknameStore {
    * 아무것도 바꾸지 않고 'taken'. 성공 시 이전 닉네임 key는 해제하고 'ok'.
    */
   claim(uid: string, nickname: string, key: string): Promise<'ok' | 'taken'>;
+}
+
+/** 글로벌 랭킹 저장소 — 공개 프로필(profiles)의 score를 읽고 쓴다 (§9.8) */
+export interface GlobalScoreRow {
+  uid: string;
+  nickname: string;
+  score: number;
+}
+
+export interface LeaderboardStore {
+  /** score 내림차순 상위 max명. score 필드가 없는 프로필은 자동 제외된다 */
+  topScores(max: number): Promise<GlobalScoreRow[]>;
+  /** 본인 프로필에 score를 병합 기록. 프로필(닉네임)이 없으면 규칙이 거부한다 */
+  publishScore(uid: string, score: number): Promise<void>;
 }
 
 /** auth-service가 소비하는 좁은 파사드 — 테스트에서는 fake로 대체 */
@@ -156,9 +183,36 @@ export function getNicknameStore(): NicknameStore {
 
         if (!claimSnap.exists()) tx.set(claimRef, { uid }); // 새 key 점유 (규칙상 create만 허용)
         if (oldKey && oldKey !== key) tx.delete(doc(database, 'nicknames', oldKey)); // 이전 key 해제
-        tx.set(profileRef, { uid, nickname, nicknameKey: key, updatedAt: serverTimestamp() });
+        // merge — 닉네임만 갱신하고 랭킹 score 필드는 보존한다
+        tx.set(profileRef, { uid, nickname, nicknameKey: key, updatedAt: serverTimestamp() }, { merge: true });
         return 'ok';
       });
+    },
+  };
+}
+
+/**
+ * 글로벌 랭킹 저장소 (§9.8). profiles를 score로 정렬해 상위 N명을 읽고,
+ * 본인 score를 병합 기록한다. 닉네임 있는 계정만 랭킹에 오른다(규칙이 강제).
+ */
+export function getLeaderboardStore(): LeaderboardStore {
+  return {
+    async topScores(max) {
+      const q = query(collection(getDb(), 'profiles'), orderBy('score', 'desc'), fbLimit(max));
+      const snap = await getDocs(q);
+      const out: GlobalScoreRow[] = [];
+      for (const d of snap.docs) {
+        const x = d.data() as { uid?: unknown; nickname?: unknown; score?: unknown };
+        if (typeof x.nickname === 'string' && typeof x.score === 'number') {
+          out.push({ uid: d.id, nickname: x.nickname, score: x.score });
+        }
+      }
+      return out;
+    },
+
+    async publishScore(uid, score) {
+      // merge — 닉네임 등 다른 필드는 건드리지 않고 score/updatedAt만 갱신
+      await setDoc(doc(getDb(), 'profiles', uid), { uid, score, updatedAt: serverTimestamp() }, { merge: true });
     },
   };
 }

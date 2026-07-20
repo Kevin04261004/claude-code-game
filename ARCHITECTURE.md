@@ -432,7 +432,7 @@ export interface SaveDataV1 {
 ## 8. 이후 확장 여지 (지금은 구현하지 않음)
 
 - **Web Worker로 시뮬 이전**: `sim/`이 이미 헤드리스이므로 포스트-MVP에 메시지 채널만 얹으면 됨.
-- **서버 리더보드**: `ILeaderboard`의 `remote-provider.ts` 구현 + 결정론 시뮬 덕에 서버 측 점수 재현 검증 가능.
+- ✅ **글로벌 리더보드**: 공개 프로필 `score` 기반 실제 유저 순위 구현(§9.9). 추후 Cloud Functions로 결정론 재현 검증 추가 가능.
 - **PixiJS 렌더러**: `IRenderer` 구현체 추가로 교체.
 - **계정/클라우드 저장/광고/모바일 앱**: §9의 확정 스택을 따른다.
 
@@ -559,8 +559,18 @@ src/
 
 - **왜 세이브와 분리하나**: `users/{uid}`는 본인만 읽을 수 있고(§9.6) 충돌 해결로 통째로 교체될 수 있다. 랭킹은 남의 이름을 읽어야 하고 세이브 교체와 무관해야 하므로 별도 문서로 둔다.
 - **Firestore 구조**
-  - `profiles/{uid}` = `{ uid, nickname, nicknameKey, updatedAt }` — 공개 프로필. 읽기: 로그인 유저 누구나, 쓰기: 본인만(형태 검증).
+  - `profiles/{uid}` = `{ uid, nickname, nicknameKey, score?, updatedAt }` — 공개 프로필. 읽기: 로그인 유저 누구나, 쓰기: 본인만(형태 검증).
   - `nicknames/{key}` = `{ uid }` — 전역 유일성 잠금 + 역참조. `key`는 정규화된 닉네임(소문자, 앞뒤 공백 제거).
 - **유일성 원자성**: `NicknameStore.claim`이 트랜잭션으로 read-check-write. 보안 규칙도 `nicknames`를 **create(문서 없을 때)만** 허용해 남의 이름 덮어쓰기를 막는다 — 두 기기가 동시에 같은 이름을 노려도 한쪽만 성공(트랜잭션 재시도 + 규칙 이중 방어).
 - **변경**: 새 key를 점유하고 이전 key를 `delete`로 해제 — 같은 트랜잭션 안에서. 대소문자만 바꾸는 것(같은 key)은 taken이 아니다.
 - **모듈**: `profile/nickname-rules.ts`(순수 검증·정규화, 유닛 테스트), `profile/nickname-service.ts`(`INickname` 구현 — 검증·상태, fake store 주입 테스트), `firebase/client.ts`의 `getNicknameStore()`(트랜잭션 구현), UI는 계정 모달(`auth/auth-ui.ts`)에 삽입. 게스트도 uid가 있으므로 설정 가능.
+
+### 9.9 글로벌 랭킹 — 실제 유저 순위 (§8 "서버 리더보드" 실현, 서버 코드 없음)
+
+> 공개 프로필의 `score`로 상위 N명을 실시간 표시. 닉네임 = 공개 식별자이므로 **닉네임이 있는 계정만** 랭킹에 오른다.
+
+- **데이터**: `profiles/{uid}.score` (공개, 읽기: 로그인 유저 누구나). 점수 공식은 결정론적(`leaderboard.ts` `playerScore` = 스테이지·레벨·킬) — 추후 Cloud Functions가 (seed, 명령 로그)로 재현·검증 가능(§3.3).
+- **게시**: `saveNow` 시점에 `IGlobalLeaderboard.publish(score)`. 내부에서 **점수 상승 시 + 최소 간격(`LEADERBOARD_PUBLISH_MIN_MS`)** 으로 스로틀 — Firestore 쓰기 할당량 보호. 닉네임 없으면 no-op, 규칙도 닉네임 없는 프로필의 score 쓰기를 거부(이중 방어).
+- **조회**: `profiles`를 `orderBy(score desc) limit(N)` — score 필드 없는 프로필은 쿼리에서 자동 제외.
+- **폴백**: 클라우드 미준비(게스트 시작 직후)·오프라인·조회 실패 시 UI가 기존 로컬 시뮬(`LocalLeaderboard`, `ILeaderboard`)로 폴백. 두 인터페이스를 분리(동기 로컬 / 비동기 글로벌)해 패널이 상황에 맞게 고른다.
+- **모듈**: `leaderboard/global-provider.ts`(`IGlobalLeaderboard` 구현 — 매핑·스로틀·닉네임 가드, fake store 유닛 테스트), `firebase/client.ts`의 `getLeaderboardStore()`(쿼리·병합 쓰기), `ui/panel-leaderboard.ts`(글로벌/로컬 렌더 + 본인 순위 푸터), 배선은 `cloud/boot.ts`→`bootstrap.ts`.

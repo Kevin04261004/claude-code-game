@@ -32,6 +32,19 @@ export interface ILeaderboard {
   entries(nowMs: number): LeaderboardEntry[];
 }
 
+/**
+ * 실제 글로벌 랭킹 (Firestore 공개 프로필 기반, §9.8). 비동기·네트워크 의존이라
+ * 동기 ILeaderboard와 분리한다. 실패/오프라인 시 UI가 ILeaderboard로 폴백한다.
+ */
+export interface IGlobalLeaderboard {
+  /** 상위 limit명 (score 내림차순). isPlayer는 본인 uid로 표시 */
+  top(limit: number): Promise<LeaderboardEntry[]>;
+  /** 본인 점수를 공개 프로필에 게시. 닉네임 미설정이면 no-op (랭킹 미참여) */
+  publish(score: number): Promise<void>;
+  /** 본인 표시 이름 (닉네임 미설정이면 null) */
+  selfName(): string | null;
+}
+
 // ── 계정/클라우드 저장 (ARCHITECTURE.md §9) ──
 
 export interface AuthUser {

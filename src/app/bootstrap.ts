@@ -7,7 +7,7 @@ import { BALANCE } from '../config/balance';
 import { SystemClock } from '../core/clock';
 import { EventBus } from '../core/event-bus';
 import { LocalLeaderboard } from '../leaderboard/local-provider';
-import { updateBestScore } from '../leaderboard/leaderboard';
+import { currentScore, updateBestScore } from '../leaderboard/leaderboard';
 import { GameLoop } from '../loop/game-loop';
 import { registerVisibility } from '../loop/visibility';
 import { CanvasRenderer } from '../render/canvas-renderer';
@@ -81,8 +81,11 @@ function startGame(
   const bus = new EventBus();
   const sim = new Simulation(state, bus);
   let mirror: MirrorNotifier | null = null; // 클라우드 미러 연결 전에는 null (§9.3)
+  let publishScore: ((score: number) => void) | null = null; // 글로벌 랭킹 연결 전에는 null
+  const myScore = () => Math.max(currentScore(state), state.leaderboard.bestScore);
   const saveNow = (critical = false) => {
     updateBestScore(state);
+    publishScore?.(myScore()); // 게시는 내부 스로틀·닉네임 가드로 걸러진다
     const save = toSave(state, clock.now());
     storage.write(save);
     if (critical) mirror?.notifyCritical(save);
@@ -110,7 +113,7 @@ function startGame(
   const canvas = document.getElementById('game') as HTMLCanvasElement;
   const renderer = new CanvasRenderer(canvas, sim);
   const hud = new Hud(document.getElementById('hud')!);
-  mountTabs(sim, clock);
+  const leaderboardPanel = mountTabs(sim, clock, myScore);
 
   // 루프 시작
   const loop = new GameLoop(sim, bus, (alpha) => {
@@ -136,6 +139,10 @@ function startGame(
         onUploaderReady: (uploader) => {
           mirror = uploader;
         },
+        onLeaderboardReady: (global) => {
+          publishScore = (score) => void global.publish(score).catch(() => {});
+          leaderboardPanel.attachGlobal(global); // 붙는 즉시 글로벌로 갱신
+        },
         reload: () => location.reload(),
       },
       lateCloudSync,
@@ -147,13 +154,13 @@ function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function mountTabs(sim: Simulation, clock: SystemClock): void {
+function mountTabs(sim: Simulation, clock: SystemClock, myScore: () => number): LeaderboardPanel {
   const tabsRoot = document.getElementById('tabs')!;
   const content = document.getElementById('tab-content')!;
 
   const weapons = new WeaponsPanel(sim);
   const skills = new SkillsPanel(sim);
-  const leaderboard = new LeaderboardPanel(new LocalLeaderboard(sim.state), clock);
+  const leaderboard = new LeaderboardPanel(new LocalLeaderboard(sim.state), clock, myScore);
 
   const tabs: { label: string; root: HTMLElement; onShow?: () => void }[] = [
     { label: '⚔️ 무기', root: weapons.root, onShow: () => weapons.refresh() },
@@ -175,4 +182,6 @@ function mountTabs(sim: Simulation, clock: SystemClock): void {
     tabsRoot.append(b);
     if (i === 0) b.click();
   });
+
+  return leaderboard;
 }

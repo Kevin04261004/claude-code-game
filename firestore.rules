@@ -30,15 +30,17 @@ service cloud.firestore {
 
     // ── 닉네임 (§9.8) — 공개 식별자, 추후 랭킹용 ──
 
-    // profiles/{uid} = { uid, nickname, nicknameKey, updatedAt } — 공개 프로필
+    // profiles/{uid} = { uid, nickname, nicknameKey, score?, updatedAt } — 공개 프로필
     // 읽기는 로그인 유저 누구나(랭킹 표시), 쓰기는 본인만.
+    // score는 글로벌 랭킹용 공개 점수 — 클라이언트 권위 모델이라 값은 검증 안 함(형태만).
     match /profiles/{userId} {
       allow read: if request.auth != null;
       allow write: if isOwner(userId)
-        && request.resource.data.keys().hasOnly(['uid', 'nickname', 'nicknameKey', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'nickname', 'nicknameKey', 'score', 'updatedAt'])
         && request.resource.data.uid == userId
         && request.resource.data.nickname is string
-        && request.resource.data.nicknameKey is string;
+        && request.resource.data.nicknameKey is string
+        && (!('score' in request.resource.data) || (request.resource.data.score is number && request.resource.data.score >= 0));
     }
 
     // nicknames/{key} = { uid } — 전역 유일성 잠금 + 역참조
