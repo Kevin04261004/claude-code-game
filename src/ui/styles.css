@@ -600,6 +600,33 @@ body {
   margin-bottom: 10px;
 }
 
+/* ── 닉네임 편집 ── */
+.modal-nick {
+  margin-bottom: 12px;
+}
+
+.modal-nick .btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.nick-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #161926;
+  border: 1px solid #2a2e3e;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #eef0f6;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.nick-input:focus {
+  outline: none;
+  border-color: #5aa6e8;
+}
+
 /* ── 시작 화면 ── */
 .start-screen {
   position: fixed;

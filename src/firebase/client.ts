@@ -18,7 +18,7 @@ import {
   type Auth,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc, getFirestore, serverTimestamp, setDoc, type Firestore } from 'firebase/firestore';
+import { doc, getDoc, getFirestore, runTransaction, serverTimestamp, setDoc, type Firestore } from 'firebase/firestore';
 import type { AuthUser, ICloudSave } from '../app/ports';
 import { migrate } from '../save/migrations';
 import type { SaveDataV1 } from '../save/save-schema';
@@ -31,6 +31,22 @@ const FIREBASE_CONFIG = {
   messagingSenderId: '339835779058',
   appId: '1:339835779058:web:065673de753f45fcb4dd6b',
 };
+
+/** nickname-service가 소비하는 좁은 파사드 — 테스트에서는 fake로 대체 */
+export interface NicknameProfile {
+  nickname: string;
+  key: string;
+}
+
+export interface NicknameStore {
+  /** profiles/{uid} 조회 — 없으면 null */
+  load(uid: string): Promise<NicknameProfile | null>;
+  /**
+   * 닉네임을 원자적으로 점유(claim)한다. key가 이미 다른 uid의 것이면
+   * 아무것도 바꾸지 않고 'taken'. 성공 시 이전 닉네임 key는 해제하고 'ok'.
+   */
+  claim(uid: string, nickname: string, key: string): Promise<'ok' | 'taken'>;
+}
 
 /** auth-service가 소비하는 좁은 파사드 — 테스트에서는 fake로 대체 */
 export interface FirebaseSdk {
@@ -102,6 +118,47 @@ export function getFirebaseSdk(): FirebaseSdk {
 
     async signOutUser() {
       await signOut(getAuthInstance());
+    },
+  };
+}
+
+/**
+ * 닉네임 저장소 (ARCHITECTURE.md §9.8).
+ *  - profiles/{uid}  = { uid, nickname, nicknameKey, updatedAt } — 공개 프로필(추후 랭킹).
+ *  - nicknames/{key} = { uid } — 전역 유일성 잠금 + 역참조.
+ *
+ * claim은 트랜잭션으로 read-check-write를 원자화한다. 보안 규칙도 nicknames는
+ * create(문서 없을 때)만 허용하므로, 두 기기가 동시에 같은 이름을 노려도
+ * 한쪽만 성공한다(트랜잭션 재시도 + 규칙 이중 방어).
+ */
+export function getNicknameStore(): NicknameStore {
+  return {
+    async load(uid) {
+      const snap = await getDoc(doc(getDb(), 'profiles', uid));
+      if (!snap.exists()) return null;
+      const d = snap.data() as { nickname?: unknown; nicknameKey?: unknown };
+      if (typeof d.nickname !== 'string' || typeof d.nicknameKey !== 'string') return null;
+      return { nickname: d.nickname, key: d.nicknameKey };
+    },
+
+    claim(uid, nickname, key) {
+      const database = getDb();
+      return runTransaction(database, async (tx) => {
+        const claimRef = doc(database, 'nicknames', key);
+        const profileRef = doc(database, 'profiles', uid);
+        // 트랜잭션 규칙: 모든 read를 write보다 먼저
+        const claimSnap = await tx.get(claimRef);
+        if (claimSnap.exists() && (claimSnap.data() as { uid?: string }).uid !== uid) {
+          return 'taken';
+        }
+        const profileSnap = await tx.get(profileRef);
+        const oldKey = profileSnap.exists() ? (profileSnap.data() as { nicknameKey?: string }).nicknameKey : undefined;
+
+        if (!claimSnap.exists()) tx.set(claimRef, { uid }); // 새 key 점유 (규칙상 create만 허용)
+        if (oldKey && oldKey !== key) tx.delete(doc(database, 'nicknames', oldKey)); // 이전 key 해제
+        tx.set(profileRef, { uid, nickname, nicknameKey: key, updatedAt: serverTimestamp() });
+        return 'ok';
+      });
     },
   };
 }

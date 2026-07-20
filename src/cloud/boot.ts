@@ -12,7 +12,8 @@ import type { SaveDataV1 } from '../save/save-schema';
 import { AuthService } from '../auth/auth-service';
 import { AuthUi } from '../auth/auth-ui';
 import { BALANCE } from '../config/balance';
-import { FirestoreCloudSave, getFirebaseSdk } from '../firebase/client';
+import { FirestoreCloudSave, getFirebaseSdk, getNicknameStore } from '../firebase/client';
+import { NicknameService } from '../profile/nickname-service';
 import { UploadScheduler } from './cloud-save';
 import { showConflictModal } from './conflict-ui';
 import { resolveInitial, summarize } from './sync';
@@ -97,8 +98,13 @@ export function attachMirror(h: CloudHandle, deps: MirrorDeps, runInitialSync: b
     isHidden: () => document.visibilityState === 'hidden',
   });
 
-  const ui = new AuthUi(deps.hudRoot, h.auth, () => void syncInGame());
+  const nickname = new NicknameService(getNicknameStore(), h.uid);
+  const ui = new AuthUi(deps.hudRoot, h.auth, nickname, () => {
+    void syncInGame();
+    void nickname.load(); // 계정 전환 시 새 계정의 닉네임으로 갱신
+  });
   ui.bindUploader(scheduler);
+  void nickname.load();
 
   deps.onUploaderReady({
     notifySaved: (save) => scheduler.notifySaved(save),

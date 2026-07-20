@@ -27,5 +27,30 @@ service cloud.firestore {
         allow read, write: if isOwner(userId) && isEnvelope();
       }
     }
+
+    // ── 닉네임 (§9.8) — 공개 식별자, 추후 랭킹용 ──
+
+    // profiles/{uid} = { uid, nickname, nicknameKey, updatedAt } — 공개 프로필
+    // 읽기는 로그인 유저 누구나(랭킹 표시), 쓰기는 본인만.
+    match /profiles/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['uid', 'nickname', 'nicknameKey', 'updatedAt'])
+        && request.resource.data.uid == userId
+        && request.resource.data.nickname is string
+        && request.resource.data.nicknameKey is string;
+    }
+
+    // nicknames/{key} = { uid } — 전역 유일성 잠금 + 역참조
+    // 점유는 create(문서 없을 때)로만 — 남의 닉네임 덮어쓰기(update) 불가.
+    // 해제(변경 시)는 본인 것만 delete 가능.
+    match /nicknames/{key} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
   }
 }

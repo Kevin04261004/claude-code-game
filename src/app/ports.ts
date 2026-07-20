@@ -69,3 +69,31 @@ export interface ICloudSave {
   /** 충돌에서 밀린 세이브를 users/{uid}/discarded/{epoch}에 보존 */
   preserveDiscarded(uid: string, save: SaveDataV1): Promise<void>;
 }
+
+// ── 닉네임 (ARCHITECTURE.md §9.8) — 계정 공개 식별자, 추후 랭킹용 ──
+
+export type NicknameInvalidReason = 'empty' | 'too-short' | 'too-long' | 'invalid-char';
+
+export type NicknameState =
+  /** 아직 클라우드에서 조회 전 */
+  | { status: 'loading'; nickname: string | null }
+  /** 조회 완료 — nickname이 null이면 미설정 */
+  | { status: 'ready'; nickname: string | null }
+  /** 조회 실패 — 마지막으로 알던 값 유지 */
+  | { status: 'error'; nickname: string | null };
+
+export type SetNicknameResult =
+  | { kind: 'ok'; nickname: string }
+  | { kind: 'invalid'; reason: NicknameInvalidReason } // 형식 오류 (길이/문자)
+  | { kind: 'taken' } // 다른 유저가 이미 사용 중
+  | { kind: 'error'; code: string }; // 네트워크 등
+
+export interface INickname {
+  /** 현재 계정의 닉네임을 클라우드에서 불러온다 (계정 전환 시 재호출) */
+  load(): Promise<void>;
+  /** 검증 → 유일성 claim → 상태 갱신. 자유롭게 변경 가능 (이전 닉네임은 해제) */
+  setNickname(raw: string): Promise<SetNicknameResult>;
+  /** 마지막으로 알려진 닉네임 (미설정/미조회면 null) */
+  current(): string | null;
+  onState(cb: (s: NicknameState) => void): () => void;
+}
